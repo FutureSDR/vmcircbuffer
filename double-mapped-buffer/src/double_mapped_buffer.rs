@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 use std::mem;
 use std::slice;
 
-use super::DoubleMappedBufferImpl;
 use super::DoubleMappedBufferError;
+use super::DoubleMappedBufferImpl;
 
 pub struct DoubleMappedBuffer<T> {
     buffer: DoubleMappedBufferImpl,
@@ -11,10 +11,12 @@ pub struct DoubleMappedBuffer<T> {
 }
 
 impl<T> DoubleMappedBuffer<T> {
-
     pub fn new(min_items: usize) -> Result<Self, DoubleMappedBufferError> {
         match DoubleMappedBufferImpl::new(min_items, mem::size_of::<T>(), mem::align_of::<T>()) {
-            Ok(buffer) => Ok(DoubleMappedBuffer {buffer, _p: PhantomData}),
+            Ok(buffer) => Ok(DoubleMappedBuffer {
+                buffer,
+                _p: PhantomData,
+            }),
             Err(e) => Err(e),
         }
     }
@@ -53,7 +55,7 @@ impl<T> DoubleMappedBuffer<T> {
 
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
-       self.buffer.len()
+        self.buffer.len()
     }
 }
 
@@ -85,7 +87,10 @@ mod test {
             compiler_fence(Ordering::SeqCst);
 
             let s = b.slice_with_offset(b.len());
-            assert_eq!(s.as_ptr() as usize, b.buffer.addr() + b.len() * mem::size_of::<u8>());
+            assert_eq!(
+                s.as_ptr() as usize,
+                b.buffer.addr() + b.len() * mem::size_of::<u8>()
+            );
             for (i, v) in s.iter().enumerate() {
                 assert_eq!(*v, (i % 128) as u8);
             }
@@ -117,7 +122,10 @@ mod test {
             compiler_fence(Ordering::SeqCst);
 
             let s = b.slice_with_offset(b.len());
-            assert_eq!(s.as_ptr() as usize, b.buffer.addr() + b.len() * mem::size_of::<u32>());
+            assert_eq!(
+                s.as_ptr() as usize,
+                b.buffer.addr() + b.len() * mem::size_of::<u32>()
+            );
             for (i, v) in s.iter().enumerate() {
                 assert_eq!(*v, (i % 128) as u32);
             }
