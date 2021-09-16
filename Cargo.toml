@@ -1,0 +1,15 @@
+[package]
+name = "rust-dsp"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+    ".",
+    "double-mapped-buffer",
+    "double-mapped-circular-buffer",
+]
+
+[dependencies]
+double-mapped-buffer = { path = "double-mapped-buffer" }
+double-mapped-circular-buffer = { path = "double-mapped-circular-buffer" }
