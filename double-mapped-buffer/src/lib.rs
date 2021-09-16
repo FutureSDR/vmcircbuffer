@@ -1,5 +1,5 @@
 mod double_mapped_buffer;
-pub use double_mapped_buffer::DoubleMappedBuffer;
+pub use crate::double_mapped_buffer::DoubleMappedBuffer;
 
 #[cfg(windows)]
 mod win;

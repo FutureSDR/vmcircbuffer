@@ -27,7 +27,7 @@ pub enum DoubleMappedBufferError {
 
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {
-    addr: *mut libc::c_void,
+    addr: usize,
     size_bytes: usize,
     item_size: usize,
 }
@@ -133,10 +133,10 @@ impl DoubleMappedBufferImpl {
             }
         }
 
-        Ok(DoubleMappedBufferImpl { addr: buff, size_bytes: size, item_size })
+        Ok(DoubleMappedBufferImpl { addr: buff as usize, size_bytes: size, item_size })
     }
 
-    pub fn addr(&self) -> *mut libc::c_void {
+    pub fn addr(&self) -> usize {
         self.addr
     }
 
@@ -148,7 +148,7 @@ impl DoubleMappedBufferImpl {
 impl Drop for DoubleMappedBufferImpl {
     fn drop(&mut self) {
         unsafe {
-            libc::munmap(self.addr, self.size_bytes * 2);
+            libc::munmap(self.addr as *mut libc::c_void, self.size_bytes * 2);
         }
     }
 }
