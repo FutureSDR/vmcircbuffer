@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
 use winapi::shared::minwindef::LPVOID;
 use winapi::um::handleapi::CloseHandle;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
@@ -16,8 +15,6 @@ use winapi::um::{
 
 use super::pagesize;
 use super::DoubleMappedBufferError;
-
-static SEGMENTS: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {
@@ -62,9 +59,6 @@ impl DoubleMappedBufferImpl {
             size += pagesize();
         }
 
-        let s = SEGMENTS.fetch_add(1, Ordering::SeqCst);
-        let seg_name = format!("{}futuresdr-{}-{}", tmp_dir, std::process::id(), s);
-
         unsafe {
             let handle = CreateFileMappingA(
                 INVALID_HANDLE_VALUE,
@@ -72,7 +66,7 @@ impl DoubleMappedBufferImpl {
                 PAGE_READWRITE,
                 0,
                 size as u32,
-                seg_name.as_ptr() as *const i8,
+                0,
             );
 
             if handle == INVALID_HANDLE_VALUE || handle == 0 as LPVOID {

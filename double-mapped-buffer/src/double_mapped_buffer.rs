@@ -136,4 +136,16 @@ mod test {
             assert_eq!(b.slice_with_offset(b.len())[0], 123);
         }
     }
+
+    #[test]
+    fn many_buffers() {
+        let _b0 = DoubleMappedBuffer::<u32>::new(123).expect("failed to create buffer");
+        let _b1 = DoubleMappedBuffer::<u32>::new(456).expect("failed to create buffer");
+
+        let mut v = Vec::new();
+
+        for _ in 0..100 {
+            v.push(DoubleMappedBuffer::<u32>::new(123).expect("failed to create buffer"));
+        }
+    }
 }

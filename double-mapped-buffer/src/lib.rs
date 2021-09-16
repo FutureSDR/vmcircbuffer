@@ -2,9 +2,9 @@ mod double_mapped_buffer;
 pub use crate::double_mapped_buffer::DoubleMappedBuffer;
 
 #[cfg(windows)]
-mod win;
+mod windows;
 #[cfg(windows)]
-use win::DoubleMappedBufferImpl;
+use windows::DoubleMappedBufferImpl;
 
 #[cfg(unix)]
 mod unix;
@@ -30,7 +30,7 @@ pub enum DoubleMappedBufferError {
     Unlink,
     #[error("Failed to create temp file.")]
     Create,
-    #[error("Wrong buffer alignemnt for data type.")]
+    #[error("Wrong buffer alignment for data type.")]
     Alignment,
 }
 
