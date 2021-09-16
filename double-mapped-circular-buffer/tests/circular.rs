@@ -1,5 +1,5 @@
-use std::iter::repeat_with;
 use rand::distributions::{Distribution, Uniform};
+use std::iter::repeat_with;
 
 use double_mapped_circular_buffer::Circular;
 
@@ -20,7 +20,7 @@ fn zero_size() {
 #[test]
 fn no_reader() {
     let w = Circular::new::<u8>(123).unwrap();
-    let s =  w.slice();
+    let s = w.slice();
     w.produce(s.len());
     assert!(w.slice().len() > 0);
 }
@@ -72,17 +72,16 @@ fn fuzz() {
     let r = w.add_reader();
     let size = w.slice().len();
 
-    let input : Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
+    let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
 
     let mut rng = rand::thread_rng();
     let n_writes_dist = Uniform::from(0..4);
-    let n_samples_dist = Uniform::from(0..size/2);
+    let n_samples_dist = Uniform::from(0..size / 2);
 
     let mut w_off = 0;
     let mut r_off = 0;
 
     while r_off < input.len() {
-
         let n_writes = n_writes_dist.sample(&mut rng);
         for _ in 0..n_writes {
             let s = w.slice();

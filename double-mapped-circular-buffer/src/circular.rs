@@ -19,12 +19,14 @@ impl Circular {
             Err(_) => return Err(CircularError::Allocation),
         };
 
-        let state = Arc::new(Mutex::new(State { writer_offset: 0, writer_ab: false, writer_done: false, readers: Slab::new()}));
+        let state = Arc::new(Mutex::new(State {
+            writer_offset: 0,
+            writer_ab: false,
+            writer_done: false,
+            readers: Slab::new(),
+        }));
 
-        let writer = Writer {
-            buffer,
-            state,
-        };
+        let writer = Writer { buffer, state };
 
         Ok(writer)
     }
@@ -49,7 +51,10 @@ pub struct Writer<T> {
 impl<T> Writer<T> {
     pub fn add_reader(&self) -> Reader<T> {
         let mut state = self.state.lock().unwrap();
-        let reader_state = ReaderState {ab: state.writer_ab, offset: state.writer_offset };
+        let reader_state = ReaderState {
+            ab: state.writer_ab,
+            offset: state.writer_offset,
+        };
         let id = state.readers.insert(reader_state);
 
         Reader {
@@ -66,7 +71,7 @@ impl<T> Writer<T> {
         let w_ab = state.writer_ab;
 
         let mut space = len;
-        
+
         for (_, reader) in state.readers.iter() {
             let r_off = reader.offset;
             let r_ab = reader.ab;
@@ -89,14 +94,12 @@ impl<T> Writer<T> {
     #[allow(clippy::mut_from_ref)]
     pub fn slice(&self) -> &mut [T] {
         let (space, offset) = self.space_and_offset();
-        unsafe {
-            &mut self.buffer.slice_with_offset_mut(offset)[0..space]
-        }
+        unsafe { &mut self.buffer.slice_with_offset_mut(offset)[0..space] }
     }
 
     pub fn produce(&self, n: usize) {
         debug_assert!(self.space_and_offset().0 >= n);
-        
+
         let mut state = self.state.lock().unwrap();
 
         if state.writer_offset + n >= self.buffer.len() {
@@ -120,12 +123,9 @@ pub struct Reader<T> {
 }
 
 impl<T> Reader<T> {
-
     fn space_and_offset(&self) -> (usize, usize) {
         let state = self.state.lock().unwrap();
-        let my = unsafe {
-            state.readers.get_unchecked(self.id)
-        };
+        let my = unsafe { state.readers.get_unchecked(self.id) };
 
         let len = self.buffer.len();
         let r_off = my.offset;
@@ -148,18 +148,14 @@ impl<T> Reader<T> {
 
     pub fn slice(&self) -> &[T] {
         let (space, offset) = self.space_and_offset();
-        unsafe {
-            &self.buffer.slice_with_offset(offset)[0..space]
-        }
+        unsafe { &self.buffer.slice_with_offset(offset)[0..space] }
     }
 
     pub fn consume(&self, n: usize) {
         debug_assert!(self.space_and_offset().0 >= n);
-        
+
         let mut state = self.state.lock().unwrap();
-        let my = unsafe {
-            state.readers.get_unchecked_mut(self.id)
-        };
+        let my = unsafe { state.readers.get_unchecked_mut(self.id) };
 
         if my.offset + n >= self.buffer.len() {
             my.ab = !my.ab;
@@ -168,9 +164,7 @@ impl<T> Reader<T> {
     }
 
     pub fn done(&self) -> bool {
-        let done = {
-            self.state.lock().unwrap().writer_done
-        };
+        let done = { self.state.lock().unwrap().writer_done };
         if !done {
             return false;
         }
@@ -185,4 +179,3 @@ impl<T> Drop for Reader<T> {
         state.readers.remove(self.id);
     }
 }
-
