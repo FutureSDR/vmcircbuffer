@@ -1,29 +1,9 @@
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
-use thiserror::Error;
 
 use super::pagesize;
-
-#[derive(Error, Debug)]
-pub enum DoubleMappedBufferError {
-    #[error("Failed to close temp file.")]
-    Close,
-    #[error("Failed to unmap second half.")]
-    UnmapSecond,
-    #[error("Failed to mmap second half.")]
-    MapSecond,
-    #[error("Failed to mmap placeholder.")]
-    Placeholder,
-    #[error("Failed to truncate temp file.")]
-    Truncate,
-    #[error("Failed to unlinkt temp file.")]
-    Unlink,
-    #[error("Failed to create temp file.")]
-    Create,
-    #[error("Wrong buffer alignemnt for data type.")]
-    Alignment,
-}
+use super::DoubleMappedBufferError;
 
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {

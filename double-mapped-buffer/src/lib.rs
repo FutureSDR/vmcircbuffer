@@ -5,16 +5,34 @@ pub use crate::double_mapped_buffer::DoubleMappedBuffer;
 mod win;
 #[cfg(windows)]
 use win::DoubleMappedBufferImpl;
-#[cfg(windows)]
-use win::DoubleMappedBufferError;
 
-#[cfg(not(windows))]
+#[cfg(unix)]
 mod unix;
-#[cfg(not(windows))]
+#[cfg(unix)]
 use unix::DoubleMappedBufferImpl;
-#[cfg(not(windows))]
-use unix::DoubleMappedBufferError;
 
+use thiserror::Error;
+#[derive(Error, Debug)]
+pub enum DoubleMappedBufferError {
+    #[error("Failed to close temp file.")]
+    Close,
+    #[error("Failed to unmap second half.")]
+    UnmapSecond,
+    #[error("Failed to mmap second half.")]
+    MapSecond,
+    #[error("Failed to mmap first half.")]
+    MapFirst,
+    #[error("Failed to mmap placeholder.")]
+    Placeholder,
+    #[error("Failed to truncate temp file.")]
+    Truncate,
+    #[error("Failed to unlinkt temp file.")]
+    Unlink,
+    #[error("Failed to create temp file.")]
+    Create,
+    #[error("Wrong buffer alignemnt for data type.")]
+    Alignment,
+}
 
 // =================== PAGESIZE ======================
 #[cfg(unix)]
