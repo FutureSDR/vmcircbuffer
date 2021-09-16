@@ -3,6 +3,10 @@ name = "double-mapped-circular-buffer"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+double-mapped-buffer = { path = "../double-mapped-buffer" }
+slab = "0.4.4"
+thiserror = "1.0.29"
+
+[dev-dependencies]
+rand = "0.8.4"

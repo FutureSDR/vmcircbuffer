@@ -40,16 +40,16 @@ impl<T> DoubleMappedBuffer<T> {
     pub unsafe fn slice_with_offset(&self, offset: usize) -> &[T] {
         let addr = self.buffer.addr() as usize;
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
-        debug_assert!(offset <= self.buffer.len());
+        debug_assert!(offset < self.buffer.len());
         slice::from_raw_parts((addr as *const T).add(offset), self.buffer.len())
     }
 
     /// # Safety
     #[allow(clippy::mut_from_ref)]
-    pub unsafe fn slice_mut_with_offset(&self, offset: usize) -> &mut [T] {
+    pub unsafe fn slice_with_offset_mut(&self, offset: usize) -> &mut [T] {
         let addr = self.buffer.addr() as usize;
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
-        debug_assert!(offset <= self.buffer.len());
+        debug_assert!(offset < self.buffer.len());
         slice::from_raw_parts_mut((addr as *mut T).add(offset), self.buffer.len())
     }
 
