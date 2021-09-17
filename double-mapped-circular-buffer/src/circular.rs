@@ -13,7 +13,11 @@ pub struct Circular;
 
 impl Circular {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
+    pub fn new<T>() -> Result<Writer<T>, CircularError> {
+        Self::with_capacity(0)
+    }
+
+    pub fn with_capacity<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
         let buffer = match DoubleMappedBuffer::new(min_items) {
             Ok(buffer) => Arc::new(buffer),
             Err(_) => return Err(CircularError::Allocation),
@@ -123,7 +127,7 @@ pub struct Reader<T> {
 }
 
 impl<T> Reader<T> {
-    fn space_and_offset(&self) -> (usize, usize) {
+    fn space_and_offset(&self) -> (usize, usize, bool) {
         let state = self.state.lock().unwrap();
         let my = unsafe { state.readers.get_unchecked(self.id) };
 
@@ -143,12 +147,16 @@ impl<T> Reader<T> {
             len
         };
 
-        (space, r_off)
+        (space, r_off, state.writer_done)
     }
 
-    pub fn slice(&self) -> &[T] {
-        let (space, offset) = self.space_and_offset();
-        unsafe { &self.buffer.slice_with_offset(offset)[0..space] }
+    pub fn slice(&self) -> Option<&[T]> {
+        let (space, offset, done) = self.space_and_offset();
+        if space == 0 && done {
+            None
+        } else {
+            unsafe { Some(&self.buffer.slice_with_offset(offset)[0..space]) }
+        }
     }
 
     pub fn consume(&self, n: usize) {
@@ -161,15 +169,6 @@ impl<T> Reader<T> {
             my.ab = !my.ab;
         }
         my.offset = (my.offset + n) % self.buffer.len();
-    }
-
-    pub fn done(&self) -> bool {
-        let done = { self.state.lock().unwrap().writer_done };
-        if !done {
-            return false;
-        }
-
-        self.space_and_offset().0 == 0
     }
 }
 

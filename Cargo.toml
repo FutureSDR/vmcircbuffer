@@ -13,3 +13,4 @@ members = [
 [dependencies]
 double-mapped-buffer = { path = "double-mapped-buffer" }
 double-mapped-circular-buffer = { path = "double-mapped-circular-buffer" }
+rand = "0.8.4"

@@ -7,7 +7,7 @@ use double_mapped_circular_buffer::Circular;
 fn create_many() {
     let mut v = Vec::new();
     for _ in 0..100 {
-        v.push(Circular::new::<u8>(123).unwrap());
+        v.push(Circular::new::<u8>().unwrap());
     }
 }
 
@@ -19,7 +19,7 @@ fn zero_size() {
 
 #[test]
 fn no_reader() {
-    let w = Circular::new::<u8>(123).unwrap();
+    let w = Circular::new::<u8>().unwrap();
     let s = w.slice();
     w.produce(s.len());
     assert!(w.slice().len() > 0);
@@ -27,7 +27,7 @@ fn no_reader() {
 
 #[test]
 fn late_reader() {
-    let w = Circular::new::<u32>(200).unwrap();
+    let w = Circular::new::<u32>().unwrap();
     let s = w.slice();
     for (i, v) in s.iter_mut().take(200).enumerate() {
         *v = i as u32;
@@ -45,7 +45,7 @@ fn late_reader() {
 
 #[test]
 fn several_readers() {
-    let w = Circular::new::<u32>(200).unwrap();
+    let w = Circular::new::<u32>().unwrap();
 
     let r1 = w.add_reader();
     let r2 = w.add_reader();
@@ -68,7 +68,7 @@ fn several_readers() {
 
 #[test]
 fn fuzz() {
-    let w = Circular::new::<u32>(200).unwrap();
+    let w = Circular::new::<u32>().unwrap();
     let r = w.add_reader();
     let size = w.slice().len();
 
