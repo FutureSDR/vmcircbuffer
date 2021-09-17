@@ -1,7 +1,7 @@
 use rand::distributions::{Distribution, Uniform};
 use std::iter::repeat_with;
 
-use double_mapped_circular_buffer::Circular;
+use double_mapped_circular_buffer::sync::Circular;
 
 #[test]
 fn create_many() {
@@ -35,7 +35,7 @@ fn late_reader() {
     w.produce(100);
 
     let r = w.add_reader();
-    assert_eq!(r.slice().unwrap().len(), 0);
+    assert_eq!(r.try_slice().unwrap().len(), 0);
     w.produce(100);
     assert_eq!(r.slice().unwrap().len(), 100);
     for (i, v) in r.slice().unwrap().iter().enumerate() {
@@ -54,7 +54,7 @@ fn several_readers() {
         *v = i as u32;
     }
     let all = w.slice().len();
-    assert_eq!(r1.slice().unwrap().len(), 0);
+    assert_eq!(r1.try_slice().unwrap().len(), 0);
     w.produce(w.slice().len());
     assert_eq!(r2.slice().unwrap().len(), all);
 
@@ -95,7 +95,7 @@ fn fuzz() {
             w_off += n;
         }
 
-        let s = r.slice().unwrap();
+        let s = r.try_slice().unwrap();
         assert_eq!(s.len(), w_off - r_off);
 
         for (i, v) in s.iter().enumerate() {

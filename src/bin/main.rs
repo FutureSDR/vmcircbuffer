@@ -4,8 +4,8 @@ use std::thread;
 use std::time;
 use std::thread::JoinHandle;
 
-use double_mapped_circular_buffer::Circular;
-use double_mapped_circular_buffer::CircularReader;
+use double_mapped_circular_buffer::sync::Circular;
+use double_mapped_circular_buffer::sync::Reader;
 
 #[allow(clippy::type_complexity)]
 struct Source<A: Send + Sync + 'static> {
@@ -22,7 +22,7 @@ impl<A: Send + Sync> Source<A> {
     pub fn run(
         &mut self,
         barrier: Arc<Barrier>,
-    ) -> (CircularReader<A>, JoinHandle<()>) {
+    ) -> (Reader<A>, JoinHandle<()>) {
         let w = Circular::new::<A>().unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();
@@ -59,7 +59,7 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
 
     pub fn run(
         &mut self,
-        r: CircularReader<A>,
+        r: Reader<A>,
         barrier: Arc<Barrier>,
     ) -> JoinHandle<Vec<A>> {
         let mut items = self.items.take().unwrap();

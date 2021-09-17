@@ -17,7 +17,7 @@ pub trait Notifier {
 pub struct Circular;
 
 impl Circular {
-    pub fn with_capacity<T, N>(min_items: usize, notifier: N) -> Result<Writer<T, N>, CircularError>
+    pub fn with_capacity<T, N>(min_items: usize) -> Result<Writer<T, N>, CircularError>
     where
         N: Notifier,
     {

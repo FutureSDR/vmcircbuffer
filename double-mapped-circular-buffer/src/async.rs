@@ -1,21 +1,22 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
+use futures::channel::mpsc::{channel, Receiver, Sender};
+use futures::StreamExt;
 
 use crate::generic;
 use crate::generic::CircularError;
 use crate::generic::Notifier;
 
-struct BlockingNotifier {
+struct AsyncNotifier {
     chan: Sender<()>,
     armed: bool,
 }
 
-impl Notifier for BlockingNotifier {
+impl Notifier for AsyncNotifier {
     fn arm(&mut self) {
         self.armed = true;
     }
     fn notify(&mut self) {
         if self.armed {
-            let _ = self.chan.send(());
+            let _ = self.chan.try_send(());
             self.armed = false;
         }
     }
@@ -32,7 +33,7 @@ impl Circular {
     pub fn with_capacity<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
         let writer = generic::Circular::with_capacity(min_items)?;
 
-        let (tx, rx) = channel();
+        let (tx, rx) = channel(1);
         Ok(Writer { writer, writer_sender: tx, chan: rx })
     }
 }
@@ -40,19 +41,19 @@ impl Circular {
 pub struct Writer<T> {
     writer_sender: Sender<()>,
     chan: Receiver<()>,
-    writer: generic::Writer<T, BlockingNotifier>,
+    writer: generic::Writer<T, AsyncNotifier>,
 }
 
 impl<T> Writer<T> {
     pub fn add_reader(&self) -> Reader<T> {
 
-        let w_notifier = BlockingNotifier {
+        let w_notifier = AsyncNotifier {
             chan: self.writer_sender.clone(),
             armed: false,
         };
 
-        let (tx, rx) = channel();
-        let r_notififer = BlockingNotifier {
+        let (tx, rx) = channel(1);
+        let r_notififer = AsyncNotifier {
             chan: tx,
             armed: false,
         };
@@ -65,11 +66,11 @@ impl<T> Writer<T> {
     }
 
     #[allow(clippy::mut_from_ref)]
-    pub fn slice(&self) -> &mut [T] {
+    pub async fn slice(&mut self) -> &mut [T] {
         loop {
             let s = self.writer.slice(true);
             if s.is_empty() {
-                let _ = self.chan.recv();
+                let _ = self.chan.next().await;
                 continue;
             } else {
                 break s;
@@ -89,15 +90,15 @@ impl<T> Writer<T> {
 
 pub struct Reader<T> {
     chan: Receiver<()>,
-    reader: generic::Reader<T, BlockingNotifier>,
+    reader: generic::Reader<T, AsyncNotifier>,
 }
 
 impl<T> Reader<T> {
-    pub fn slice(&self) -> Option<&[T]> {
+    pub async fn slice(&mut self) -> Option<&[T]> {
         loop {
             if let Some(s) = self.reader.slice(true) {
                 if s.is_empty() {
-                    let _ = self.chan.recv();
+                    let _ = self.chan.next().await;
                     continue;
                 } else {
                     break Some(s);
