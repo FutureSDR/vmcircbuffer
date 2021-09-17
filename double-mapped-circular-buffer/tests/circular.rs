@@ -189,3 +189,45 @@ fn fuzz_async() {
         }
     });
 }
+
+#[test]
+fn block() {
+    let w = Circular::new::<f32>().unwrap();
+    let r = w.add_reader();
+
+    w.produce(w.slice().len());
+
+    let now = std::time::Instant::now();
+    let delay = std::time::Duration::from_millis(1000);
+
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        r.consume(r.slice().unwrap().len());
+    });
+
+    let _ = w.slice();
+    assert!(now.elapsed() > delay);
+}
+
+#[test]
+fn wait() {
+    smol::block_on(async {
+        let mut w = asynchronous::Circular::new::<f32>().unwrap();
+        let mut r = w.add_reader();
+
+        let l = w.slice().await.len();
+        w.produce(l);
+
+        let now = std::time::Instant::now();
+        let delay = std::time::Duration::from_millis(1000);
+
+        smol::spawn(async move {
+            smol::Timer::after(delay).await;
+            let l = r.slice().await.unwrap().len();
+            r.consume(l);
+        }).detach();
+
+        let _ = w.slice().await;
+        assert!(now.elapsed() > delay);
+    });
+}
