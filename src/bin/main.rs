@@ -1,12 +1,11 @@
 use std::iter::repeat_with;
 use std::sync::{Arc, Barrier};
 use std::thread;
+use std::time;
 use std::thread::JoinHandle;
 
 use double_mapped_circular_buffer::Circular;
 use double_mapped_circular_buffer::CircularReader;
-
-// struct Kernel<A, B> {}
 
 #[allow(clippy::type_complexity)]
 struct Source<A: Send + Sync + 'static> {
@@ -80,11 +79,10 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
 }
 
 fn main() {
-    let n_samples = 1231233;
-
-    let mut i = 0;
+    let n_samples = 3231233;
     let input: Vec<f32> = repeat_with(rand::random::<f32>).take(n_samples).collect();
 
+    let mut i = 0;
     let mut src = Source::new(move |s: &mut [f32]| -> Option<usize> {
         if i < n_samples {
             let len = std::cmp::min(s.len(), n_samples - i);
@@ -95,15 +93,16 @@ fn main() {
             None
         }
     });
-
     let mut snk = Sink::new(n_samples);
 
     let barrier = Arc::new(Barrier::new(3));
     let (reader, _) = src.run(Arc::clone(&barrier));
     let handle = snk.run(reader, Arc::clone(&barrier));
 
+    let now = time::Instant::now();
     barrier.wait();
-    println!("started all");
     let output = handle.join().unwrap();
+    let elapsed = now.elapsed();
     println!("rxed vec of len {}", output.len());
+    println!("processing took: {}", elapsed.as_secs_f64());
 }
