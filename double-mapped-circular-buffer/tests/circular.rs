@@ -13,7 +13,7 @@ fn create_many() {
 
 #[test]
 fn zero_size() {
-    let w = Circular::new::<u8>(0).unwrap();
+    let w = Circular::new::<u8>().unwrap();
     assert!(w.slice().len() > 0);
 }
 
@@ -35,10 +35,10 @@ fn late_reader() {
     w.produce(100);
 
     let r = w.add_reader();
-    assert_eq!(r.slice().len(), 0);
+    assert_eq!(r.slice().unwrap().len(), 0);
     w.produce(100);
-    assert_eq!(r.slice().len(), 100);
-    for (i, v) in r.slice().iter().enumerate() {
+    assert_eq!(r.slice().unwrap().len(), 100);
+    for (i, v) in r.slice().unwrap().iter().enumerate() {
         assert_eq!(*v, 100 + i as u32);
     }
 }
@@ -54,14 +54,14 @@ fn several_readers() {
         *v = i as u32;
     }
     let all = w.slice().len();
-    assert_eq!(r1.slice().len(), 0);
+    assert_eq!(r1.slice().unwrap().len(), 0);
     w.produce(w.slice().len());
-    assert_eq!(r2.slice().len(), all);
+    assert_eq!(r2.slice().unwrap().len(), all);
 
     r1.consume(100);
 
-    assert_eq!(r1.slice().len(), all - 100);
-    for (i, v) in r1.slice().iter().enumerate() {
+    assert_eq!(r1.slice().unwrap().len(), all - 100);
+    for (i, v) in r1.slice().unwrap().iter().enumerate() {
         assert_eq!(*v, 100 + i as u32);
     }
 }
@@ -95,7 +95,7 @@ fn fuzz() {
             w_off += n;
         }
 
-        let s = r.slice();
+        let s = r.slice().unwrap();
         assert_eq!(s.len(), w_off - r_off);
 
         for (i, v) in s.iter().enumerate() {
