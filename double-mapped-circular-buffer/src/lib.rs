@@ -1,4 +1,2 @@
-mod circular;
-pub use circular::Circular;
-pub use circular::Reader as CircularReader;
-pub use circular::Writer as CircularWriter;
+pub mod generic;
+pub mod sync;
