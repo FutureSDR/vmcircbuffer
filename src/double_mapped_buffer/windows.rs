@@ -128,7 +128,7 @@ impl Drop for DoubleMappedBufferImpl {
     fn drop(&mut self) {
         unsafe {
             UnmapViewOfFile(self.addr as LPCVOID);
-            UnmapViewOfFile((self.addr as LPCVOID).add(self.size));
+            UnmapViewOfFile((self.addr as LPCVOID).add(self.size_bytes));
             CloseHandle(self.handle);
         }
     }
