@@ -1,7 +1,8 @@
-use double_mapped_buffer::DoubleMappedBuffer;
 use slab::Slab;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
+
+use crate::double_mapped_buffer::DoubleMappedBuffer;
 
 #[derive(Error, Debug)]
 pub enum CircularError {

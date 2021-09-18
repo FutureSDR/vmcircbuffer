@@ -1,3 +1,4 @@
+pub mod double_mapped_buffer;
 pub mod generic;
 
 #[cfg(feature = "async")]

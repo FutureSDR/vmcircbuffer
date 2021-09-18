@@ -62,7 +62,7 @@ impl<T> DoubleMappedBuffer<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::pagesize;
+    use crate::double_mapped_buffer::pagesize;
     use std::mem;
     use std::sync::atomic::compiler_fence;
     use std::sync::atomic::Ordering;

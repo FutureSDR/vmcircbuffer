@@ -1,5 +1,6 @@
+#[allow(clippy::module_inception)]
 mod double_mapped_buffer;
-pub use crate::double_mapped_buffer::DoubleMappedBuffer;
+pub use double_mapped_buffer::DoubleMappedBuffer;
 
 #[cfg(windows)]
 mod windows;

@@ -1,9 +1,9 @@
 use rand::distributions::{Distribution, Uniform};
 use std::iter::repeat_with;
 
-use double_mapped_circular_buffer::asynchronous;
-use double_mapped_circular_buffer::nonblocking;
-use double_mapped_circular_buffer::sync::Circular;
+use vmcircbuffer::asynchronous;
+use vmcircbuffer::nonblocking;
+use vmcircbuffer::sync::Circular;
 
 #[test]
 fn create_many() {
