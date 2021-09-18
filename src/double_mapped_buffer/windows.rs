@@ -1,9 +1,11 @@
+use winapi::shared::minwindef::LPCVOID;
 use winapi::shared::minwindef::LPVOID;
 use winapi::um::handleapi::CloseHandle;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::memoryapi::MapViewOfFileEx;
 use winapi::um::memoryapi::VirtualAlloc;
 use winapi::um::memoryapi::VirtualFree;
+use winapi::um::winnt::HANDLE;
 use winapi::um::winnt::MEM_RELEASE;
 use winapi::um::winnt::MEM_RESERVE;
 use winapi::um::winnt::PAGE_NOACCESS;
@@ -19,7 +21,7 @@ use super::DoubleMappedBufferError;
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {
     addr: usize,
-    handle: *mut libc::c_void,
+    handle: HANDLE,
     size_bytes: usize,
     item_size: usize,
 }
@@ -66,7 +68,7 @@ impl DoubleMappedBufferImpl {
                 PAGE_READWRITE,
                 0,
                 size as u32,
-                0,
+                std::ptr::null(),
             );
 
             if handle == INVALID_HANDLE_VALUE || handle == 0 as LPVOID {
@@ -125,8 +127,8 @@ impl DoubleMappedBufferImpl {
 impl Drop for DoubleMappedBufferImpl {
     fn drop(&mut self) {
         unsafe {
-            UnmapViewOfFile(self.addr);
-            UnmapViewOfFile(self.addr.add(self.size));
+            UnmapViewOfFile(self.addr as LPCVOID);
+            UnmapViewOfFile((self.addr as LPCVOID).add(self.size));
             CloseHandle(self.handle);
         }
     }
