@@ -4,8 +4,8 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time;
 
-use double_mapped_circular_buffer::sync::Circular;
-use double_mapped_circular_buffer::sync::Reader;
+use vmcircbuffer::sync::Circular;
+use vmcircbuffer::sync::Reader;
 
 struct VectorSource;
 impl VectorSource {
