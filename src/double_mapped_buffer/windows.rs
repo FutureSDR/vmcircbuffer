@@ -1,3 +1,4 @@
+use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::LPCVOID;
 use winapi::shared::minwindef::LPVOID;
 use winapi::um::handleapi::CloseHandle;
@@ -21,7 +22,7 @@ use super::DoubleMappedBufferError;
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {
     addr: usize,
-    handle: HANDLE,
+    handle: usize,
     size_bytes: usize,
     item_size: usize,
 }
@@ -57,7 +58,7 @@ impl DoubleMappedBufferImpl {
                 std::mem::zeroed(),
                 PAGE_READWRITE,
                 0,
-                size as u32,
+                size as DWORD,
                 std::ptr::null(),
             );
 
@@ -65,8 +66,9 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::Placeholder);
             }
 
-            let first_tmp = VirtualAlloc(0 as LPVOID, 2 * size, MEM_RESERVE, PAGE_NOACCESS);
-            if first_tmp == 0 as LPVOID {
+            let first_tmp =
+                VirtualAlloc(std::ptr::null_mut(), 2 * size, MEM_RESERVE, PAGE_NOACCESS);
+            if first_tmp.is_null() {
                 CloseHandle(handle);
                 return Err(DoubleMappedBufferError::MapFirst);
             }
@@ -88,9 +90,9 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::Alignment);
             }
 
-            let second_cpy =
-                MapViewOfFileEx(handle, FILE_MAP_WRITE, 0, 0, size, first_tmp.add(size));
-            if second_cpy != first_tmp.add(size) {
+            let first_ptr = (first_tmp as *mut u8).add(size) as LPVOID;
+            let second_cpy = MapViewOfFileEx(handle, FILE_MAP_WRITE, 0, 0, size, first_ptr);
+            if second_cpy != first_ptr {
                 UnmapViewOfFile(first_cpy);
                 CloseHandle(handle);
                 return Err(DoubleMappedBufferError::MapSecond);
@@ -98,7 +100,7 @@ impl DoubleMappedBufferImpl {
 
             Ok(DoubleMappedBufferImpl {
                 addr: first_tmp as usize,
-                handle,
+                handle: handle as usize,
                 size_bytes: size,
                 item_size,
             })
@@ -118,8 +120,8 @@ impl Drop for DoubleMappedBufferImpl {
     fn drop(&mut self) {
         unsafe {
             UnmapViewOfFile(self.addr as LPCVOID);
-            UnmapViewOfFile((self.addr as LPCVOID).add(self.size_bytes));
-            CloseHandle(self.handle);
+            UnmapViewOfFile((self.addr + self.size_bytes) as LPCVOID);
+            CloseHandle(self.handle as HANDLE);
         }
     }
 }
