@@ -72,9 +72,7 @@ impl CopyBlock {
     where
         A: Send + Sync + Clone + 'static,
     {
-        Middle::new(|input: &[A], output: &mut [A]|
-                    output.clone_from_slice(input)
-        )
+        Middle::new(|input: &[A], output: &mut [A]| output.clone_from_slice(input))
     }
 }
 
@@ -159,7 +157,7 @@ fn main() {
 
     for _ in 0..n_copy {
         let mut cpy = CopyBlock::new::<f32>();
-        let (a, _ ) = cpy.run(reader, Arc::clone(&barrier));
+        let (a, _) = cpy.run(reader, Arc::clone(&barrier));
         reader = a;
     }
 

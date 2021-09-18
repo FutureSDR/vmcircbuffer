@@ -33,7 +33,11 @@ impl Circular {
         let writer = generic::Circular::with_capacity(min_items)?;
 
         let (tx, rx) = channel();
-        Ok(Writer { writer, writer_sender: tx, chan: rx })
+        Ok(Writer {
+            writer,
+            writer_sender: tx,
+            chan: rx,
+        })
     }
 }
 
@@ -45,7 +49,6 @@ pub struct Writer<T> {
 
 impl<T> Writer<T> {
     pub fn add_reader(&self) -> Reader<T> {
-
         let w_notifier = BlockingNotifier {
             chan: self.writer_sender.clone(),
             armed: false,
@@ -58,10 +61,7 @@ impl<T> Writer<T> {
         };
 
         let reader = self.writer.add_reader(r_notififer, w_notifier);
-        Reader {
-            reader,
-            chan: rx,
-        }
+        Reader { reader, chan: rx }
     }
 
     #[allow(clippy::mut_from_ref)]

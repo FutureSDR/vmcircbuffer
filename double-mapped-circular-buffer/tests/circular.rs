@@ -1,9 +1,9 @@
 use rand::distributions::{Distribution, Uniform};
 use std::iter::repeat_with;
 
-use double_mapped_circular_buffer::sync::Circular;
-use double_mapped_circular_buffer::nonblocking;
 use double_mapped_circular_buffer::asynchronous;
+use double_mapped_circular_buffer::nonblocking;
+use double_mapped_circular_buffer::sync::Circular;
 
 #[test]
 fn create_many() {
@@ -225,7 +225,8 @@ fn wait() {
             smol::Timer::after(delay).await;
             let l = r.slice().await.unwrap().len();
             r.consume(l);
-        }).detach();
+        })
+        .detach();
 
         let _ = w.slice().await;
         assert!(now.elapsed() > delay);
