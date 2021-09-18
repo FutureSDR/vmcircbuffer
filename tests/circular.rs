@@ -16,7 +16,7 @@ fn create_many() {
 #[test]
 fn zero_size() {
     let w = Circular::new::<u8>().unwrap();
-    assert!(w.slice().len() > 0);
+    assert!(!w.slice().is_empty());
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn no_reader() {
     let w = Circular::new::<u8>().unwrap();
     let s = w.slice();
     w.produce(s.len());
-    assert!(w.slice().len() > 0);
+    assert!(!w.slice().is_empty());
 }
 
 #[test]
