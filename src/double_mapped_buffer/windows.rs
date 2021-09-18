@@ -32,29 +32,19 @@ impl DoubleMappedBufferImpl {
         item_size: usize,
         alignment: usize,
     ) -> Result<Self, DoubleMappedBufferError> {
-        Self::with_tmp_dir(min_items, item_size, alignment, "")
-    }
-
-    pub fn with_tmp_dir(
-        min_items: usize,
-        item_size: usize,
-        alignment: usize,
-        tmp_dir: &str,
-    ) -> Result<Self, DoubleMappedBufferError> {
         for _ in 0..5 {
-            let ret = Self::new_try(min_items, item_size, alignment, tmp_dir);
+            let ret = Self::new_try(min_items, item_size, alignment);
             if ret.is_ok() {
                 return ret;
             }
         }
-        Self::new_try(min_items, item_size, alignment, tmp_dir)
+        Self::new_try(min_items, item_size, alignment)
     }
 
     fn new_try(
         min_items: usize,
         item_size: usize,
         alignment: usize,
-        tmp_dir: &str,
     ) -> Result<Self, DoubleMappedBufferError> {
         let mut size = pagesize();
         while size < min_items * item_size || size % item_size != 0 {
