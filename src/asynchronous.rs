@@ -1,3 +1,7 @@
+//! Async Circular Buffer to `await` until buffer space or data becomes available.
+//!
+//! The [Writer](crate::asynchronous::Writer) and [Reader](crate::asynchronous::Reader) have async `slice()` functions to await until buffer space or data becomes available, respectively.
+
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::StreamExt;
 

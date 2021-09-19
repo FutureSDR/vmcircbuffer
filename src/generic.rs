@@ -10,14 +10,22 @@ pub enum CircularError {
     Allocation,
 }
 
+/// A custom notifier can be used to trigger arbitrary mechanism to signal to a reader or writer that data or buffer space is available. This might be a write to an sync/async channel or a condition variable.
 pub trait Notifier {
+    /// Arm the notifier.
     fn arm(&mut self);
+    /// The implementation should
+    /// - only notify if armed
+    /// - notify
+    /// - unarm
     fn notify(&mut self);
 }
 
+/// Gernerif Circular Buffer Constructor
 pub struct Circular;
 
 impl Circular {
+    /// Create writer for the circular buffer that can hold at least `min_items` items.
     pub fn with_capacity<T, N>(min_items: usize) -> Result<Writer<T, N>, CircularError>
     where
         N: Notifier,
