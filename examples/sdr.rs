@@ -96,7 +96,11 @@ where
         }
     }
 
-    pub fn run(&mut self, mut reader: Reader<A>, barrier: Arc<Barrier>) -> (Reader<B>, JoinHandle<()>) {
+    pub fn run(
+        &mut self,
+        mut reader: Reader<A>,
+        barrier: Arc<Barrier>,
+    ) -> (Reader<B>, JoinHandle<()>) {
         let mut w = Circular::new::<B>().unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();

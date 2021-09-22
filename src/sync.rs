@@ -91,13 +91,11 @@ impl<T> Writer<T> {
             match self.writer.slice(true) {
                 [] => {
                     let _ = self.chan.recv();
-                },
+                }
                 s => break (s.as_mut_ptr(), s.len()),
             }
         };
-        unsafe {
-            slice::from_raw_parts_mut(p, s)
-        }
+        unsafe { slice::from_raw_parts_mut(p, s) }
     }
 
     /// Get a slice to the free slots, available for writing.
@@ -114,7 +112,7 @@ impl<T> Writer<T> {
     ///
     /// # Panics
     ///
-    /// If produced (in total) more than space was available in the last provided slice.
+    /// If produced more than space was available in the last provided slice.
     #[inline]
     pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
@@ -139,15 +137,13 @@ impl<T> Reader<T> {
             match self.reader.slice(true) {
                 Some([]) => {
                     let _ = self.chan.recv();
-                },
+                }
                 Some(s) => break Some((s.as_ptr(), s.len())),
                 None => break None,
             }
         };
         if let Some((p, s)) = r {
-            unsafe {
-                Some(slice::from_raw_parts(p, s))
-            }
+            unsafe { Some(slice::from_raw_parts(p, s)) }
         } else {
             None
         }
@@ -167,7 +163,7 @@ impl<T> Reader<T> {
     ///
     /// # Panics
     ///
-    /// If consumed (in total) more than space was available in the last provided slice.
+    /// If consumed more than space was available in the last provided slice.
     #[inline]
     pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);

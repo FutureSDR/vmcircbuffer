@@ -27,7 +27,7 @@ pub trait Notifier {
 pub struct Circular;
 
 impl Circular {
-    /// Create writer for the circular buffer that can hold at least `min_items` items.
+    /// Create a circular buffer that can hold at least `min_items` items.
     pub fn with_capacity<T, N>(min_items: usize) -> Result<Writer<T, N>, CircularError>
     where
         N: Notifier,
@@ -44,7 +44,11 @@ impl Circular {
             readers: Slab::new(),
         }));
 
-        let writer = Writer { buffer, state, last_space: 0 };
+        let writer = Writer {
+            buffer,
+            state,
+            last_space: 0,
+        };
 
         Ok(writer)
     }
@@ -79,6 +83,7 @@ impl<T, N> Writer<T, N>
 where
     N: Notifier,
 {
+    /// Add a [Reader] to the buffer.
     pub fn add_reader(&self, reader_notifier: N, writer_notifier: N) -> Reader<T, N> {
         let mut state = self.state.lock().unwrap();
         let reader_state = ReaderState {
@@ -133,12 +138,20 @@ where
         (space, w_off)
     }
 
+    /// Get a slice for the output buffer space. Might be empty.
     pub fn slice(&mut self, arm: bool) -> &mut [T] {
         let (space, offset) = self.space_and_offset(arm);
         self.last_space = space;
         unsafe { &mut self.buffer.slice_with_offset_mut(offset)[0..space] }
     }
 
+    /// Indicates that `n` items were written to the output buffer.
+    ///
+    /// It is ok if `n` is zero.
+    ///
+    /// # Panics
+    ///
+    /// If produced more than space was available in the last provided slice.
     pub fn produce(&mut self, n: usize) {
         if n == 0 {
             return;
@@ -219,6 +232,9 @@ where
         (space, r_off, state.writer_done)
     }
 
+    /// Get a slice with the items available to read.
+    ///
+    /// Returns `None` if the reader was dropped and all data was read.
     pub fn slice(&mut self, arm: bool) -> Option<&[T]> {
         let (space, offset, done) = self.space_and_offset(arm);
         self.last_space = space;
@@ -229,6 +245,11 @@ where
         }
     }
 
+    /// Indicates that `n` items were read.
+    ///
+    /// # Panics
+    ///
+    /// If consumed more than space was available in the last provided slice.
     pub fn consume(&mut self, n: usize) {
         if n == 0 {
             return;

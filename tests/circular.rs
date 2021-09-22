@@ -228,4 +228,3 @@ fn minimal() {
         assert_eq!(*v, 123);
     }
 }
-

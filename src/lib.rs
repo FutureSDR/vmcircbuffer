@@ -8,7 +8,7 @@
 //! - [Sync](sync), [async](asynchronous), and [non-blocking](nonblocking) implementations.
 //! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::generic::Notifier) to ease integration.
 //! - Underlying data sturcture (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
-//! 
+//!
 //! # Quick Start
 //!
 //! ```
@@ -16,11 +16,11 @@
 //! # use vmcircbuffer::generic::CircularError;
 //! let mut w = sync::Circular::new::<u32>()?;
 //! let mut r = w.add_reader();
-//! 
+//!
 //! // delay producing by 1 sec
 //! let now = std::time::Instant::now();
 //! let delay = std::time::Duration::from_millis(1000);
-//! 
+//!
 //! // producer thread
 //! std::thread::spawn(move || {
 //!     std::thread::sleep(delay);
@@ -31,7 +31,7 @@
 //!     let l = w_buff.len();
 //!     w.produce(l);
 //! });
-//! 
+//!
 //! // blocks until data becomes available
 //! let r_buff = r.slice().unwrap();
 //! assert!(now.elapsed() > delay);

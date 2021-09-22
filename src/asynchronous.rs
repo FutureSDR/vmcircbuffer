@@ -29,14 +29,21 @@ impl Notifier for AsyncNotifier {
     }
 }
 
+/// Builder for the *async* circular buffer implementation.
 pub struct Circular;
 
 impl Circular {
+    /// Create a buffer for items of type `T` with minimal capacity (usually a page size).
+    ///
+    /// The actual size is the least common multiple of the page size and the size of `T`.
     #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Result<Writer<T>, CircularError> {
         Self::with_capacity(0)
     }
 
+    /// Create a buffer that can hold at least `min_items` items of type `T`.
+    ///
+    /// The size is the least common multiple of the page size and the size of `T`.
     pub fn with_capacity<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
         let writer = generic::Circular::with_capacity(min_items)?;
 
@@ -49,6 +56,7 @@ impl Circular {
     }
 }
 
+/// Writer for a blocking circular buffer with items of type `T`.
 pub struct Writer<T> {
     writer_sender: Sender<()>,
     chan: Receiver<()>,
@@ -56,6 +64,11 @@ pub struct Writer<T> {
 }
 
 impl<T> Writer<T> {
+    /// Add a reader to the buffer.
+    ///
+    /// All readers can block the buffer, i.e., the writer will only overwrite
+    /// data, if data was [consume](crate::asynchronous::Reader::consume)ed by
+    /// all readers.
     pub fn add_reader(&self) -> Reader<T> {
         let w_notifier = AsyncNotifier {
             chan: self.writer_sender.clone(),
@@ -72,6 +85,10 @@ impl<T> Writer<T> {
         Reader { reader, chan: rx }
     }
 
+    /// Get a slice to the available output space.
+    ///
+    /// The future resolves once output space is available.
+    /// The returned slice will never be empty.
     pub async fn slice(&mut self) -> &mut [T] {
         // ugly workaround for borrow-checker problem
         // https://github.com/rust-lang/rust/issues/21906
@@ -79,19 +96,27 @@ impl<T> Writer<T> {
             match self.writer.slice(true) {
                 [] => {
                     let _ = self.chan.next().await;
-                },
-                s => break (s.as_mut_ptr(), s.len())
+                }
+                s => break (s.as_mut_ptr(), s.len()),
             }
         };
-        unsafe {
-            slice::from_raw_parts_mut(p, s)
-        }
+        unsafe { slice::from_raw_parts_mut(p, s) }
     }
 
+    /// Get a slice to the free slots, available for writing.
+    ///
+    /// This function return immediately. The slice might be [empty](slice::is_empty).
     pub fn try_slice(&mut self) -> &mut [T] {
         self.writer.slice(false)
     }
 
+    /// Indicates that `n` items were written to the output buffer.
+    ///
+    /// It is ok if `n` is zero.
+    ///
+    /// # Panics
+    ///
+    /// If produced more than space was available in the last provided slice.
     pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
     }
@@ -103,6 +128,10 @@ pub struct Reader<T> {
 }
 
 impl<T> Reader<T> {
+    /// Blocks until there is data to read or until the writer is dropped.
+    ///
+    /// If all data is read and the writer is dropped, all following calls will
+    /// return `None`. If `Some` is returned, the contained slice is never empty.
     pub async fn slice(&mut self) -> Option<&[T]> {
         // ugly workaround for borrow-checker problem
         // https://github.com/rust-lang/rust/issues/21906
@@ -110,25 +139,33 @@ impl<T> Reader<T> {
             match self.reader.slice(true) {
                 Some([]) => {
                     let _ = self.chan.next().await;
-                },
+                }
                 Some(s) => break Some((s.as_ptr(), s.len())),
                 None => break None,
             }
         };
 
         if let Some((p, s)) = r {
-            unsafe {
-                Some(slice::from_raw_parts(p, s))
-            }
+            unsafe { Some(slice::from_raw_parts(p, s)) }
         } else {
             None
         }
     }
 
+    /// Checks if there is data to read.
+    ///
+    /// If all data is read and the writer is dropped, all following calls will
+    /// return `None`. If there is no data to read, `Some` is returned with an
+    /// empty slice.
     pub fn try_slice(&mut self) -> Option<&[T]> {
         self.reader.slice(false)
     }
 
+    /// Indicates that `n` items were read.
+    ///
+    /// # Panics
+    ///
+    /// If consumed more than space was available in the last provided slice.
     pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);
     }

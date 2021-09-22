@@ -48,14 +48,12 @@ static PAGE_SIZE: OnceCell<usize> = OnceCell::new();
 /// of the page size.
 #[cfg(unix)]
 pub fn pagesize() -> usize {
-    *PAGE_SIZE.get_or_init(|| {
-        unsafe {
-            let ps = libc::sysconf(libc::_SC_PAGESIZE);
-            if ps < 0 {
-                panic!("could not determince page size");
-            }
-            ps as usize
+    *PAGE_SIZE.get_or_init(|| unsafe {
+        let ps = libc::sysconf(libc::_SC_PAGESIZE);
+        if ps < 0 {
+            panic!("could not determince page size");
         }
+        ps as usize
     })
 }
 
@@ -65,12 +63,9 @@ use winapi::um::sysinfoapi::GetSystemInfo;
 use winapi::um::sysinfoapi::SYSTEM_INFO;
 #[cfg(windows)]
 pub fn pagesize() -> usize {
-    *PAGE_SIZE.get_or_init(|| {
-        unsafe {
-            let mut info: SYSTEM_INFO = std::mem::zeroed();
-            GetSystemInfo(&mut info);
-            info.dwAllocationGranularity as usize
-        }
+    *PAGE_SIZE.get_or_init(|| unsafe {
+        let mut info: SYSTEM_INFO = std::mem::zeroed();
+        GetSystemInfo(&mut info);
+        info.dwAllocationGranularity as usize
     })
 }
-
