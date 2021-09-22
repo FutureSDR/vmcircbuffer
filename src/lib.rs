@@ -14,8 +14,8 @@
 //! ```
 //! # use vmcircbuffer::sync;
 //! # use vmcircbuffer::generic::CircularError;
-//! let w = sync::Circular::new::<u32>()?;
-//! let r = w.add_reader();
+//! let mut w = sync::Circular::new::<u32>()?;
+//! let mut r = w.add_reader();
 //! 
 //! // delay producing by 1 sec
 //! let now = std::time::Instant::now();
@@ -28,7 +28,8 @@
 //!     for v in w_buff.iter_mut() {
 //!         *v = 23;
 //!     }
-//!     w.produce(w_buff.len());
+//!     let l = w_buff.len();
+//!     w.produce(l);
 //! });
 //! 
 //! // blocks until data becomes available
@@ -37,7 +38,8 @@
 //! for v in r_buff {
 //!     assert_eq!(*v, 23);
 //! }
-//! r.consume(r_buff.len());
+//! let l = r_buff.len();
+//! r.consume(l);
 //! # Ok::<(), CircularError>(())
 //! ```
 //!

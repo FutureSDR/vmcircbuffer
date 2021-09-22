@@ -16,14 +16,14 @@ pub enum CircularError {
 pub trait Notifier {
     /// Arm the notifier.
     fn arm(&mut self);
-    /// The implementation should
+    /// The implementation must
     /// - only notify if armed
     /// - notify
     /// - unarm
     fn notify(&mut self);
 }
 
-/// Gernerif Circular Buffer Constructor
+/// Gerneric Circular Buffer Constructor
 pub struct Circular;
 
 impl Circular {

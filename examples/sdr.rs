@@ -42,7 +42,7 @@ impl<A: Send + Sync> Source<A> {
     }
 
     pub fn run(&mut self, barrier: Arc<Barrier>) -> (Reader<A>, JoinHandle<()>) {
-        let w = Circular::new::<A>().unwrap();
+        let mut w = Circular::new::<A>().unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();
 
@@ -96,8 +96,8 @@ where
         }
     }
 
-    pub fn run(&mut self, reader: Reader<A>, barrier: Arc<Barrier>) -> (Reader<B>, JoinHandle<()>) {
-        let w = Circular::new::<B>().unwrap();
+    pub fn run(&mut self, mut reader: Reader<A>, barrier: Arc<Barrier>) -> (Reader<B>, JoinHandle<()>) {
+        let mut w = Circular::new::<B>().unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();
 
@@ -128,7 +128,7 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
         }
     }
 
-    pub fn run(&mut self, r: Reader<A>, barrier: Arc<Barrier>) -> JoinHandle<Vec<A>> {
+    pub fn run(&mut self, mut r: Reader<A>, barrier: Arc<Barrier>) -> JoinHandle<Vec<A>> {
         let mut items = self.items.take().unwrap();
 
         thread::spawn(move || {
@@ -136,7 +136,8 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
 
             while let Some(s) = r.slice() {
                 items.extend_from_slice(s);
-                r.consume(s.len());
+                let l = s.len();
+                r.consume(l);
             }
 
             println!("Sink terminated");

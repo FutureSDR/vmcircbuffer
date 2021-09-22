@@ -110,23 +110,11 @@ impl<T> Writer<T> {
 
     /// Indicates that `n` items were written to the output buffer.
     ///
-    /// It is ok if `n` is zero. It is ok to call this function multiple times.
+    /// It is ok if `n` is zero.
     ///
     /// # Panics
     ///
     /// If produced (in total) more than space was available in the last provided slice.
-    ///
-    /// ```
-    /// # use vmcircbuffer::sync::Circular;
-    /// # use vmcircbuffer::generic::CircularError;
-    /// # let writer = Circular::new::<u8>()?;
-    /// # let s = writer.slice();
-    /// writer.produce(1);
-    /// writer.produce(1);
-    /// // is equivalent to 
-    /// writer.produce(2);
-    /// # Ok::<(), CircularError>(())
-    /// ```
     #[inline]
     pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
@@ -177,24 +165,9 @@ impl<T> Reader<T> {
 
     /// Indicates that `n` items were read.
     ///
-    ///  This function can be called multiple times.
-    ///
     /// # Panics
     ///
     /// If consumed (in total) more than space was available in the last provided slice.
-    ///
-    /// ```
-    /// # use vmcircbuffer::sync::Circular;
-    /// # use vmcircbuffer::generic::CircularError;
-    /// # let writer = Circular::new::<u8>()?;
-    /// # let reader = writer.add_reader();
-    /// # writer.produce(writer.slice().len());
-    /// reader.consume(1);
-    /// reader.consume(1);
-    /// // is equivalent to 
-    /// reader.consume(2);
-    /// # Ok::<(), CircularError>(())
-    /// ```
     #[inline]
     pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);

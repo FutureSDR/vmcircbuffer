@@ -14,28 +14,51 @@ fn create_many() {
 
 #[test]
 fn zero_size() {
-    let w = Circular::new::<u8>().unwrap();
+    let mut w = Circular::new::<u8>().unwrap();
     assert!(!w.slice().is_empty());
 }
 
 #[test]
 fn no_reader() {
-    let w = Circular::new::<u8>().unwrap();
+    let mut w = Circular::new::<u8>().unwrap();
     let s = w.slice();
-    w.produce(s.len());
+    let l = s.len();
+    w.produce(l);
     assert!(!w.slice().is_empty());
 }
 
 #[test]
+#[should_panic]
+fn produce_too_much() {
+    let mut w = Circular::new::<u8>().unwrap();
+    let s = w.slice();
+    let l = s.len();
+    w.produce(l + 1);
+}
+
+#[test]
+#[should_panic]
+fn consume_too_much() {
+    let mut w = Circular::new::<u8>().unwrap();
+    let mut r = w.add_reader();
+    let s = w.slice();
+    let l = s.len();
+    w.produce(l + 1);
+    let s = r.slice().unwrap();
+    let l = s.len();
+    r.consume(l + 1);
+}
+
+#[test]
 fn late_reader() {
-    let w = Circular::new::<u32>().unwrap();
+    let mut w = Circular::new::<u32>().unwrap();
     let s = w.slice();
     for (i, v) in s.iter_mut().take(200).enumerate() {
         *v = i as u32;
     }
     w.produce(100);
 
-    let r = w.add_reader();
+    let mut r = w.add_reader();
     assert_eq!(r.try_slice().unwrap().len(), 0);
     w.produce(100);
     assert_eq!(r.slice().unwrap().len(), 100);
@@ -46,19 +69,21 @@ fn late_reader() {
 
 #[test]
 fn several_readers() {
-    let w = Circular::new::<u32>().unwrap();
+    let mut w = Circular::new::<u32>().unwrap();
 
-    let r1 = w.add_reader();
-    let r2 = w.add_reader();
+    let mut r1 = w.add_reader();
+    let mut r2 = w.add_reader();
 
     for (i, v) in w.slice().iter_mut().enumerate() {
         *v = i as u32;
     }
     let all = w.slice().len();
     assert_eq!(r1.try_slice().unwrap().len(), 0);
-    w.produce(w.slice().len());
+    let l = w.slice().len();
+    w.produce(l);
     assert_eq!(r2.slice().unwrap().len(), all);
 
+    let _ = r1.slice();
     r1.consume(100);
 
     assert_eq!(r1.slice().unwrap().len(), all - 100);
@@ -69,8 +94,8 @@ fn several_readers() {
 
 #[test]
 fn fuzz_sync() {
-    let w = Circular::new::<u32>().unwrap();
-    let r = w.add_reader();
+    let mut w = Circular::new::<u32>().unwrap();
+    let mut r = w.add_reader();
     let size = w.slice().len();
 
     let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
@@ -102,15 +127,16 @@ fn fuzz_sync() {
         for (i, v) in s.iter().enumerate() {
             assert_eq!(*v, input[r_off + i]);
         }
-        r.consume(s.len());
-        r_off += s.len();
+        let l = s.len();
+        r.consume(l);
+        r_off += l;
     }
 }
 
 #[test]
 fn fuzz_nonblocking() {
-    let w = nonblocking::Circular::new::<u32>().unwrap();
-    let r = w.add_reader();
+    let mut w = nonblocking::Circular::new::<u32>().unwrap();
+    let mut r = w.add_reader();
     let size = w.try_slice().len();
 
     let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
@@ -142,24 +168,27 @@ fn fuzz_nonblocking() {
         for (i, v) in s.iter().enumerate() {
             assert_eq!(*v, input[r_off + i]);
         }
-        r.consume(s.len());
-        r_off += s.len();
+        let l = s.len();
+        r.consume(l);
+        r_off += l;
     }
 }
 
 #[test]
-fn block() {
-    let w = Circular::new::<f32>().unwrap();
-    let r = w.add_reader();
+fn block_writer() {
+    let mut w = Circular::new::<f32>().unwrap();
+    let mut r = w.add_reader();
 
-    w.produce(w.slice().len());
+    let l = w.slice().len();
+    w.produce(l);
 
     let now = std::time::Instant::now();
     let delay = std::time::Duration::from_millis(1000);
 
     std::thread::spawn(move || {
         std::thread::sleep(delay);
-        r.consume(r.slice().unwrap().len());
+        let l = r.slice().unwrap().len();
+        r.consume(l);
     });
 
     let _ = w.slice();
@@ -167,32 +196,36 @@ fn block() {
 }
 
 #[test]
+fn block_reader() {
+    let mut w = Circular::new::<f32>().unwrap();
+    let mut r = w.add_reader();
+
+    let now = std::time::Instant::now();
+    let delay = std::time::Duration::from_millis(1000);
+
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        let l = w.slice().len();
+        w.produce(l);
+    });
+
+    let _ = r.slice();
+    assert!(now.elapsed() > delay);
+}
+
+#[test]
 fn minimal() {
-    let w = Circular::new::<u32>().unwrap();
-    let r = w.add_reader();
+    let mut w = Circular::new::<u32>().unwrap();
+    let mut r = w.add_reader();
 
     for v in w.slice() {
         *v = 123;
     }
-    w.produce(w.slice().len());
+    let l = w.slice().len();
+    w.produce(l);
 
     for v in r.slice().unwrap() {
         assert_eq!(*v, 123);
     }
 }
 
-#[test]
-fn slice_lifetime() {
-    let w = Circular::new::<u32>().unwrap();
-    let r = w.add_reader();
-
-    let a = w.slice();
-    let b = w.slice();
-    a[0] = 1;
-    b[0] = 2;
-
-    let a = r.slice().unwrap();
-    let b = r.slice().unwrap();
-    let _a = a[0];
-    let _b = b[0];
-}
