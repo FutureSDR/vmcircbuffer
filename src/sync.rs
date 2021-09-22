@@ -1,3 +1,6 @@
+//! Blocking Circular Buffer that blocks until data becomes available.
+
+use core::slice;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::generic;
@@ -21,14 +24,21 @@ impl Notifier for BlockingNotifier {
     }
 }
 
+/// Builder for the *blocking* circular buffer implementation.
 pub struct Circular;
 
 impl Circular {
+    /// Create a buffer for items of type `T` with minimal capacity (usually a page size).
+    ///
+    /// The actual size is the least common multiple of the page size and the size of `T`.
     #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Result<Writer<T>, CircularError> {
         Self::with_capacity(0)
     }
 
+    /// Create a buffer that can hold at least `min_items` items of type `T`.
+    ///
+    /// The size is the least common multiple of the page size and the size of `T`.
     pub fn with_capacity<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
         let writer = generic::Circular::with_capacity(min_items)?;
 
@@ -41,6 +51,7 @@ impl Circular {
     }
 }
 
+/// Writer for a blocking circular buffer with items of type `T`.
 pub struct Writer<T> {
     writer_sender: Sender<()>,
     chan: Receiver<()>,
@@ -48,6 +59,11 @@ pub struct Writer<T> {
 }
 
 impl<T> Writer<T> {
+    /// Add a reader to the buffer.
+    ///
+    /// All readers can block the buffer, i.e., the writer will only overwrite
+    /// data, if data was [consume](crate::sync::Reader::consume)ed by all
+    /// readers.
     pub fn add_reader(&self) -> Reader<T> {
         let w_notifier = BlockingNotifier {
             chan: self.writer_sender.clone(),
@@ -64,55 +80,123 @@ impl<T> Writer<T> {
         Reader { reader, chan: rx }
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub fn slice(&self) -> &mut [T] {
-        loop {
-            let s = self.writer.slice(true);
-            if s.is_empty() {
-                let _ = self.chan.recv();
-                continue;
-            } else {
-                break s;
+    /// Blocking call to get a slice to the available output space.
+    ///
+    /// The function returns as soon as any output space is available.
+    /// The returned slice will never be empty.
+    pub fn slice(&mut self) -> &mut [T] {
+        // ugly workaround for borrow-checker problem
+        // https://github.com/rust-lang/rust/issues/21906
+        let (p, s) = loop {
+            match self.writer.slice(true) {
+                [] => {
+                    let _ = self.chan.recv();
+                },
+                s => break (s.as_mut_ptr(), s.len()),
             }
+        };
+        unsafe {
+            slice::from_raw_parts_mut(p, s)
         }
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub fn try_slice(&self) -> &mut [T] {
+    /// Get a slice to the free slots, available for writing.
+    ///
+    /// This function return immediately. The slice might be [empty](slice::is_empty).
+    #[inline]
+    pub fn try_slice(&mut self) -> &mut [T] {
         self.writer.slice(false)
     }
 
-    pub fn produce(&self, n: usize) {
+    /// Indicates that `n` items were written to the output buffer.
+    ///
+    /// It is ok if `n` is zero. It is ok to call this function multiple times.
+    ///
+    /// # Panics
+    ///
+    /// If produced (in total) more than space was available in the last provided slice.
+    ///
+    /// ```
+    /// # use vmcircbuffer::sync::Circular;
+    /// # use vmcircbuffer::generic::CircularError;
+    /// # let writer = Circular::new::<u8>()?;
+    /// # let s = writer.slice();
+    /// writer.produce(1);
+    /// writer.produce(1);
+    /// // is equivalent to 
+    /// writer.produce(2);
+    /// # Ok::<(), CircularError>(())
+    /// ```
+    #[inline]
+    pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
     }
 }
 
+/// Reader for a blocking circular buffer with items of type `T`.
 pub struct Reader<T> {
     chan: Receiver<()>,
     reader: generic::Reader<T, BlockingNotifier>,
 }
 
 impl<T> Reader<T> {
-    pub fn slice(&self) -> Option<&[T]> {
-        loop {
-            if let Some(s) = self.reader.slice(true) {
-                if s.is_empty() {
+    /// Blocks until there is data to read or until the writer is dropped.
+    ///
+    /// If all data is read and the writer is dropped, all following calls will
+    /// return `None`. If `Some` is returned, the contained slice is never empty.
+    pub fn slice(&mut self) -> Option<&[T]> {
+        // ugly workaround for borrow-checker problem
+        // https://github.com/rust-lang/rust/issues/21906
+        let r = loop {
+            match self.reader.slice(true) {
+                Some([]) => {
                     let _ = self.chan.recv();
-                    continue;
-                } else {
-                    break Some(s);
-                }
-            } else {
-                break None;
+                },
+                Some(s) => break Some((s.as_ptr(), s.len())),
+                None => break None,
             }
+        };
+        if let Some((p, s)) = r {
+            unsafe {
+                Some(slice::from_raw_parts(p, s))
+            }
+        } else {
+            None
         }
     }
 
-    pub fn try_slice(&self) -> Option<&[T]> {
+    /// Checks if there is data to read.
+    ///
+    /// If all data is read and the writer is dropped, all following calls will
+    /// return `None`. If there is no data to read, `Some` is returned with an
+    /// empty slice.
+    #[inline]
+    pub fn try_slice(&mut self) -> Option<&[T]> {
         self.reader.slice(false)
     }
 
-    pub fn consume(&self, n: usize) {
+    /// Indicates that `n` items were read.
+    ///
+    ///  This function can be called multiple times.
+    ///
+    /// # Panics
+    ///
+    /// If consumed (in total) more than space was available in the last provided slice.
+    ///
+    /// ```
+    /// # use vmcircbuffer::sync::Circular;
+    /// # use vmcircbuffer::generic::CircularError;
+    /// # let writer = Circular::new::<u8>()?;
+    /// # let reader = writer.add_reader();
+    /// # writer.produce(writer.slice().len());
+    /// reader.consume(1);
+    /// reader.consume(1);
+    /// // is equivalent to 
+    /// reader.consume(2);
+    /// # Ok::<(), CircularError>(())
+    /// ```
+    #[inline]
+    pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);
     }
 }

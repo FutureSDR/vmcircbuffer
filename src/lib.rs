@@ -1,30 +1,65 @@
 //! Double Mapped Circular Buffer
 //!
-//! Main features:
+//! - Thread-safe.
 //! - Supports multiple readers.
 //! - Generic over the item type.
-//! - Sync/Async/Nonblocking implementation.
-//! - [Generic](crate::generic) implementation allows to specify custom [Notifiers](crate::generic::Notifier) to
-//! The crates comes with a [blocking/sync](sync) and [async](asynchronous) implementation. Both will block/await until space becomes available in the buffer.
-//! There is also a [nonblocking](nonblocking::Circular) implementation that can be used with a separate
-//!
-//!
-//!
+//! - Provides access to all items (not n-1).
+//! - Supports Linux, macOS, Windows, and Android.
+//! - [Sync](sync), [async](asynchronous), and [non-blocking](nonblocking) implementations.
+//! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::generic::Notifier) to ease integration.
+//! - Underlying data sturcture (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
+//! 
 //! # Quick Start
 //!
-//!``` rust
-//!let w = Circular::new::<u32>().unwrap();
-//!let r = w.add_reader();
+//! ```
+//! # use vmcircbuffer::sync;
+//! # use vmcircbuffer::generic::CircularError;
+//! let w = sync::Circular::new::<u32>()?;
+//! let r = w.add_reader();
+//! 
+//! // delay producing by 1 sec
+//! let now = std::time::Instant::now();
+//! let delay = std::time::Duration::from_millis(1000);
+//! 
+//! // producer thread
+//! std::thread::spawn(move || {
+//!     std::thread::sleep(delay);
+//!     let w_buff = w.slice();
+//!     for v in w_buff.iter_mut() {
+//!         *v = 23;
+//!     }
+//!     w.produce(w_buff.len());
+//! });
+//! 
+//! // blocks until data becomes available
+//! let r_buff = r.slice().unwrap();
+//! assert!(now.elapsed() > delay);
+//! for v in r_buff {
+//!     assert_eq!(*v, 23);
+//! }
+//! r.consume(r_buff.len());
+//! # Ok::<(), CircularError>(())
+//! ```
 //!
-//!for v in w.slice() {
-//!    *v = 123;
-//!}
-//!w.produce(w.slice().len());
+//! # Commonalities
 //!
-//!for v in r.slice().unwrap() {
-//!    assert_eq!(*v, 123);
-//!}
-//!```
+//! There are some commonalities between the implementations:
+//! - The `Circular` struct is a factory to create the `Writer`.
+//! - If there are no `Reader`s, the `Writer` will not block but continuously overwrite the buffer.
+//! - The `Writer` has an `add_reader()` method to add `Reader`s.
+//! - When the `Writer` is dropped, the `Reader` can read the remaining items. Afterwards, the `slice()` will return `None`.
+//!
+//! # Details
+//!
+//! This circular buffer implementation maps the underlying buffer twice,
+//! back-to-back into the virtual address space of the process. This arrangement
+//! allows the circular buffer to present the available data sequentially,
+//! (i.e., as a slice) without having to worry about wrapping.
+//!
+//! On Unix-based systems, the mapping is setup with a temporary file. This file
+//! is created in the folder, determined through [std::env::temp_dir], which
+//! considers environment variables. This can be used, if the standard paths are
+//! not present of not writable on the platform.
 //!
 //! # Features
 //!
@@ -32,11 +67,7 @@
 
 #[cfg(feature = "async")]
 pub mod asynchronous;
-/// Underlying data structure that maps a buffer twice into virtual memory.
 pub mod double_mapped_buffer;
-/// Circular Buffer with generic wait/block behavior..
 pub mod generic;
-/// Nonblocking Circular Buffer that can be used with custom
 pub mod nonblocking;
-/// Blocking/Sync Circular Buffer
 pub mod sync;

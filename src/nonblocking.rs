@@ -1,3 +1,5 @@
+//! Non-blocking Circular Buffer that can only check if data is available right now.
+
 use crate::generic;
 use crate::generic::CircularError;
 use crate::generic::Notifier;
@@ -34,12 +36,11 @@ impl<T> Writer<T> {
         Reader { reader }
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub fn try_slice(&self) -> &mut [T] {
+    pub fn try_slice(&mut self) -> &mut [T] {
         self.writer.slice(false)
     }
 
-    pub fn produce(&self, n: usize) {
+    pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
     }
 }
@@ -49,11 +50,11 @@ pub struct Reader<T> {
 }
 
 impl<T> Reader<T> {
-    pub fn try_slice(&self) -> Option<&[T]> {
+    pub fn try_slice(&mut self) -> Option<&[T]> {
         self.reader.slice(false)
     }
 
-    pub fn consume(&self, n: usize) {
+    pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);
     }
 }

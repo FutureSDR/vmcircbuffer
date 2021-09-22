@@ -1,3 +1,5 @@
+//! Underlying data structure that maps a buffer twice into virtual memory.
+
 #[allow(clippy::module_inception)]
 mod double_mapped_buffer;
 pub use double_mapped_buffer::DoubleMappedBuffer;
@@ -13,6 +15,7 @@ mod unix;
 use unix::DoubleMappedBufferImpl;
 
 use thiserror::Error;
+/// Errors that can occur when setting up the double mapping.
 #[derive(Error, Debug)]
 pub enum DoubleMappedBufferError {
     #[error("Failed to close temp file.")]
@@ -36,27 +39,38 @@ pub enum DoubleMappedBufferError {
 }
 
 // =================== PAGESIZE ======================
+use once_cell::sync::OnceCell;
+static PAGE_SIZE: OnceCell<usize> = OnceCell::new();
+
+/// Size of virtual memory pages.
+///
+/// Determines the granularity of the double buffer, which has to be a multiple
+/// of the page size.
 #[cfg(unix)]
 pub fn pagesize() -> usize {
-    unsafe {
-        let ps = libc::sysconf(libc::_SC_PAGESIZE);
-        if ps < 0 {
-            panic!("could not determince page size");
+    *PAGE_SIZE.get_or_init(|| {
+        unsafe {
+            let ps = libc::sysconf(libc::_SC_PAGESIZE);
+            if ps < 0 {
+                panic!("could not determince page size");
+            }
+            ps as usize
         }
-        ps as usize
-    }
+    })
 }
 
 #[cfg(windows)]
 use winapi::um::sysinfoapi::GetSystemInfo;
 #[cfg(windows)]
 use winapi::um::sysinfoapi::SYSTEM_INFO;
-
 #[cfg(windows)]
 pub fn pagesize() -> usize {
-    unsafe {
-        let mut info: SYSTEM_INFO = std::mem::zeroed();
-        GetSystemInfo(&mut info);
-        info.dwAllocationGranularity as usize
-    }
+    *PAGE_SIZE.get_or_init(|| {
+        unsafe {
+            let mut info: SYSTEM_INFO = std::mem::zeroed();
+            GetSystemInfo(&mut info);
+            info.dwAllocationGranularity as usize
+        }
+    })
 }
+

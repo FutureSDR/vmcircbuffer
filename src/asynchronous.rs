@@ -1,9 +1,12 @@
-//! Async Circular Buffer to `await` until buffer space or data becomes available.
+//! Async Circular Buffer that can `await` until buffer space becomes available.
 //!
-//! The [Writer](crate::asynchronous::Writer) and [Reader](crate::asynchronous::Reader) have async `slice()` functions to await until buffer space or data becomes available, respectively.
+//! The [Writer](crate::asynchronous::Writer) and
+//! [Reader](crate::asynchronous::Reader) have async `slice()` functions to
+//! await until buffer space or data becomes available, respectively.
 
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::StreamExt;
+use std::slice;
 
 use crate::generic;
 use crate::generic::CircularError;
@@ -69,25 +72,27 @@ impl<T> Writer<T> {
         Reader { reader, chan: rx }
     }
 
-    #[allow(clippy::mut_from_ref)]
     pub async fn slice(&mut self) -> &mut [T] {
-        loop {
-            let s = self.writer.slice(true);
-            if s.is_empty() {
-                let _ = self.chan.next().await;
-                continue;
-            } else {
-                break s;
+        // ugly workaround for borrow-checker problem
+        // https://github.com/rust-lang/rust/issues/21906
+        let (p, s) = loop {
+            match self.writer.slice(true) {
+                [] => {
+                    let _ = self.chan.next().await;
+                },
+                s => break (s.as_mut_ptr(), s.len())
             }
+        };
+        unsafe {
+            slice::from_raw_parts_mut(p, s)
         }
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub fn try_slice(&self) -> &mut [T] {
+    pub fn try_slice(&mut self) -> &mut [T] {
         self.writer.slice(false)
     }
 
-    pub fn produce(&self, n: usize) {
+    pub fn produce(&mut self, n: usize) {
         self.writer.produce(n);
     }
 }
@@ -99,25 +104,32 @@ pub struct Reader<T> {
 
 impl<T> Reader<T> {
     pub async fn slice(&mut self) -> Option<&[T]> {
-        loop {
-            if let Some(s) = self.reader.slice(true) {
-                if s.is_empty() {
+        // ugly workaround for borrow-checker problem
+        // https://github.com/rust-lang/rust/issues/21906
+        let r = loop {
+            match self.reader.slice(true) {
+                Some([]) => {
                     let _ = self.chan.next().await;
-                    continue;
-                } else {
-                    break Some(s);
-                }
-            } else {
-                break None;
+                },
+                Some(s) => break Some((s.as_ptr(), s.len())),
+                None => break None,
             }
+        };
+
+        if let Some((p, s)) = r {
+            unsafe {
+                Some(slice::from_raw_parts(p, s))
+            }
+        } else {
+            None
         }
     }
 
-    pub fn try_slice(&self) -> Option<&[T]> {
+    pub fn try_slice(&mut self) -> Option<&[T]> {
         self.reader.slice(false)
     }
 
-    pub fn consume(&self, n: usize) {
+    pub fn consume(&mut self, n: usize) {
         self.reader.consume(n);
     }
 }

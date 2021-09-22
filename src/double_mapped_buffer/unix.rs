@@ -32,9 +32,10 @@ impl DoubleMappedBufferImpl {
         item_size: usize,
         alignment: usize,
     ) -> Result<Self, DoubleMappedBufferError> {
-        let mut size = pagesize();
+        let ps = pagesize();
+        let mut size = ps;
         while size < min_items * item_size || size % item_size != 0 {
-            size += pagesize();
+            size += ps;
         }
 
         let tmp = std::env::temp_dir();
@@ -127,7 +128,7 @@ impl DoubleMappedBufferImpl {
         self.addr
     }
 
-    pub fn len(&self) -> usize {
+    pub fn capacity(&self) -> usize {
         self.size_bytes / self.item_size
     }
 }

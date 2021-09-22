@@ -1,3 +1,5 @@
+//! Circular Buffer with generic [Notifier] to implement custom wait/block behavior.
+
 use slab::Slab;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
@@ -42,7 +44,7 @@ impl Circular {
             readers: Slab::new(),
         }));
 
-        let writer = Writer { buffer, state };
+        let writer = Writer { buffer, state, last_space: 0 };
 
         Ok(writer)
     }
@@ -68,6 +70,7 @@ pub struct Writer<T, N>
 where
     N: Notifier,
 {
+    last_space: usize,
     buffer: Arc<DoubleMappedBuffer<T>>,
     state: Arc<Mutex<State<N>>>,
 }
@@ -88,6 +91,7 @@ where
 
         Reader {
             id,
+            last_space: 0,
             buffer: self.buffer.clone(),
             state: self.state.clone(),
         }
@@ -95,22 +99,22 @@ where
 
     fn space_and_offset(&self, arm: bool) -> (usize, usize) {
         let mut state = self.state.lock().unwrap();
-        let len = self.buffer.len();
+        let capacity = self.buffer.capacity();
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
 
-        let mut space = len;
+        let mut space = capacity;
 
         for (_, reader) in state.readers.iter_mut() {
             let r_off = reader.offset;
             let r_ab = reader.ab;
 
             let s = if w_off > r_off {
-                r_off + len - w_off
+                r_off + capacity - w_off
             } else if w_off < r_off {
                 r_off - w_off
             } else if r_ab == w_ab {
-                len
+                capacity
             } else {
                 0
             };
@@ -129,24 +133,30 @@ where
         (space, w_off)
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub fn slice(&self, arm: bool) -> &mut [T] {
+    pub fn slice(&mut self, arm: bool) -> &mut [T] {
         let (space, offset) = self.space_and_offset(arm);
+        self.last_space = space;
         unsafe { &mut self.buffer.slice_with_offset_mut(offset)[0..space] }
     }
 
-    pub fn produce(&self, n: usize) {
-        debug_assert!(self.space_and_offset(false).0 >= n);
+    pub fn produce(&mut self, n: usize) {
         if n == 0 {
             return;
         }
 
+        debug_assert!(self.space_and_offset(false).0 >= n);
+
+        if n > self.last_space {
+            panic!("vmcircbuffer: consumed too much");
+        }
+        self.last_space -= n;
+
         let mut state = self.state.lock().unwrap();
 
-        if state.writer_offset + n >= self.buffer.len() {
+        if state.writer_offset + n >= self.buffer.capacity() {
             state.writer_ab = !state.writer_ab;
         }
-        state.writer_offset = (state.writer_offset + n) % self.buffer.len();
+        state.writer_offset = (state.writer_offset + n) % self.buffer.capacity();
 
         for (_, r) in state.readers.iter_mut() {
             r.reader_notifier.notify();
@@ -172,6 +182,7 @@ where
     N: Notifier,
 {
     id: usize,
+    last_space: usize,
     buffer: Arc<DoubleMappedBuffer<T>>,
     state: Arc<Mutex<State<N>>>,
 }
@@ -184,20 +195,20 @@ where
         let mut state = self.state.lock().unwrap();
         let my = unsafe { state.readers.get_unchecked(self.id) };
 
-        let len = self.buffer.len();
+        let capacity = self.buffer.capacity();
         let r_off = my.offset;
         let r_ab = my.ab;
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
 
         let space = if r_off > w_off {
-            w_off + len - r_off
+            w_off + capacity - r_off
         } else if r_off < w_off {
             w_off - r_off
         } else if r_ab == w_ab {
             0
         } else {
-            len
+            capacity
         };
 
         if space == 0 && arm {
@@ -208,8 +219,9 @@ where
         (space, r_off, state.writer_done)
     }
 
-    pub fn slice(&self, arm: bool) -> Option<&[T]> {
+    pub fn slice(&mut self, arm: bool) -> Option<&[T]> {
         let (space, offset, done) = self.space_and_offset(arm);
+        self.last_space = space;
         if space == 0 && done {
             None
         } else {
@@ -217,16 +229,26 @@ where
         }
     }
 
-    pub fn consume(&self, n: usize) {
+    pub fn consume(&mut self, n: usize) {
+        if n == 0 {
+            return;
+        }
+
         debug_assert!(self.space_and_offset(false).0 >= n);
+
+        if n > self.last_space {
+            panic!("vmcircbuffer: consumed too much!");
+        }
+
+        self.last_space -= n;
 
         let mut state = self.state.lock().unwrap();
         let my = unsafe { state.readers.get_unchecked_mut(self.id) };
 
-        if my.offset + n >= self.buffer.len() {
+        if my.offset + n >= self.buffer.capacity() {
             my.ab = !my.ab;
         }
-        my.offset = (my.offset + n) % self.buffer.len();
+        my.offset = (my.offset + n) % self.buffer.capacity();
 
         my.writer_notifier.notify();
     }
