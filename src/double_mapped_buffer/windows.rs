@@ -112,7 +112,7 @@ impl DoubleMappedBufferImpl {
         self.addr
     }
 
-    pub fn len(&self) -> usize {
+    pub fn capacity(&self) -> usize {
         self.size_bytes / self.item_size
     }
 }

@@ -6,13 +6,17 @@ use thiserror::Error;
 
 use crate::double_mapped_buffer::DoubleMappedBuffer;
 
+/// Error setting up the underlying buffer.
 #[derive(Error, Debug)]
 pub enum CircularError {
+    /// Failed to allocate double mapped buffer.
     #[error("Failed to allocate double mapped buffer.")]
     Allocation,
 }
 
-/// A custom notifier can be used to trigger arbitrary mechanism to signal to a reader or writer that data or buffer space is available. This might be a write to an sync/async channel or a condition variable.
+/// A custom notifier can be used to trigger arbitrary mechanism to signal to a
+/// reader or writer that data or buffer space is available. This could be a
+/// write to an sync/async channel or a condition variable.
 pub trait Notifier {
     /// Arm the notifier.
     fn arm(&mut self);
@@ -27,7 +31,9 @@ pub trait Notifier {
 pub struct Circular;
 
 impl Circular {
-    /// Create a circular buffer that can hold at least `min_items` items.
+    /// Create a buffer that can hold at least `min_items` items of type `T`.
+    ///
+    /// The size is the least common multiple of the page size and the size of `T`.
     pub fn with_capacity<T, N>(min_items: usize) -> Result<Writer<T, N>, CircularError>
     where
         N: Notifier,
@@ -70,6 +76,7 @@ struct ReaderState<N> {
     writer_notifier: N,
 }
 
+/// Writer for a generic circular buffer with items of type `T` and [Notifier] of type `N`.
 pub struct Writer<T, N>
 where
     N: Notifier,
@@ -190,6 +197,7 @@ where
     }
 }
 
+/// Reader for a generic circular buffer with items of type `T` and [Notifier] of type `N`.
 pub struct Reader<T, N>
 where
     N: Notifier,

@@ -18,22 +18,31 @@ use thiserror::Error;
 /// Errors that can occur when setting up the double mapping.
 #[derive(Error, Debug)]
 pub enum DoubleMappedBufferError {
+    /// Failed to close temp file.
     #[error("Failed to close temp file.")]
     Close,
+    /// Failed to unmap second half.
     #[error("Failed to unmap second half.")]
     UnmapSecond,
+    /// Failed to mmap second half.
     #[error("Failed to mmap second half.")]
     MapSecond,
+    /// Failed to mmap first half.
     #[error("Failed to mmap first half.")]
     MapFirst,
+    /// Failed to mmap placeholder.
     #[error("Failed to mmap placeholder.")]
     Placeholder,
+    /// Failed to truncate temp file.
     #[error("Failed to truncate temp file.")]
     Truncate,
+    /// Failed to unlink temp file.
     #[error("Failed to unlinkt temp file.")]
     Unlink,
+    /// Failed to create temp file.
     #[error("Failed to create temp file.")]
     Create,
+    /// Wrong alignment for data type.
     #[error("Wrong buffer alignment for data type.")]
     Alignment,
 }

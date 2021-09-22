@@ -122,6 +122,7 @@ impl<T> Writer<T> {
     }
 }
 
+/// Reader for an async circular buffer with items of type `T`.
 pub struct Reader<T> {
     chan: Receiver<()>,
     reader: generic::Reader<T, AsyncNotifier>,
