@@ -1,9 +1,13 @@
 # Double Mapped Circular Buffer
 
-This circular buffer implementation maps the underlying buffer twice,
-back-to-back into the virtual address space of the process. This arrangement
-allows the circular buffer to present the available data sequentially, (i.e., as
-a slice) without having to worry about wrapping.
+- Thread-safe.
+- Supports multiple readers.
+- Generic over the item type.
+- Provides access to all items (not n-1).
+- Supports Linux, macOS, Windows, and Android.
+- Sync, async, and non-blocking implementations.
+- Generic variant that allows specifying custom `Notifiers` to ease integration.
+- Underlying data structure (i.e., `DoubleMappedBuffer`) is exported to allow custom implementations.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Apache 2.0 licensed][apache-badge]][apache-url]
@@ -16,9 +20,18 @@ a slice) without having to worry about wrapping.
 [actions-badge]: https://github.com/futuresdr/vmcircbuffer/workflows/CI/badge.svg
 [actions-url]: https://github.com/futuresdr/vmcircbuffer/actions?query=workflow%3ACI+branch%3Amain
 
+## Overview
+
+This circular buffer implementation maps the underlying buffer twice,
+back-to-back into the virtual address space of the process. This arrangement
+allows the circular buffer to present the available data sequentially, (i.e., as
+a slice) without having to worry about wrapping.
+
+## Example
+
 ```rust
-# use vmcircbuffer::sync;
-# use vmcircbuffer::generic::CircularError;
+use vmcircbuffer::sync;
+
 let mut w = sync::Circular::new::<u32>()?;
 let mut r = w.add_reader();
 
@@ -45,5 +58,10 @@ for v in r_buff {
 }
 let l = r_buff.len();
 r.consume(l);
-# Ok::<(), CircularError>(())
 ```
+
+## Contributions
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the project, shall be licensed as Apache 2.0, without any
+additional terms or conditions.

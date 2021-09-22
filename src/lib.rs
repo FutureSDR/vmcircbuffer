@@ -7,7 +7,7 @@
 //! - Supports Linux, macOS, Windows, and Android.
 //! - [Sync](sync), [async](asynchronous), and [non-blocking](nonblocking) implementations.
 //! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::generic::Notifier) to ease integration.
-//! - Underlying data sturcture (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
+//! - Underlying data structure (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
 //!
 //! # Quick Start
 //!
