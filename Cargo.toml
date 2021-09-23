@@ -7,7 +7,7 @@ license = "Apache-2.0"
 homepage = "https://www.futuresdr.org"
 repository = "https://github.com/futuresdr/vmcircbuffer/"
 readme = "README.md"
-description = "Doubly Mapped Circular Buffer"
+description = "Double Mapped Circular Buffer"
 keywords = ["sdr", "dsp", "real-time", "async"]
 categories = ["asynchronous", "concurrency", "hardware-support", "science"]
 
