@@ -151,13 +151,13 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
 }
 
 fn main() {
-    let n_samples = 3231233;
+    let n_samples = 10_000_000;
     let input: Vec<f32> = repeat_with(rand::random::<f32>).take(n_samples).collect();
 
-    let n_copy = 1230;
+    let n_copy = 100;
     let barrier = Arc::new(Barrier::new(n_copy + 3));
 
-    let mut src = VectorSource::new(input);
+    let mut src = VectorSource::new(input.clone());
     let (mut reader, _) = src.run(Arc::clone(&barrier));
 
     for _ in 0..n_copy {
@@ -173,6 +173,7 @@ fn main() {
     barrier.wait();
     let output = handle.join().unwrap();
     let elapsed = now.elapsed();
-    println!("rxed vec of len {}", output.len());
-    println!("processing took: {}", elapsed.as_secs_f64());
+    assert_eq!(input, output);
+    println!("data matches");
+    println!("runtime (in s): {}", elapsed.as_secs_f64());
 }
