@@ -12,9 +12,10 @@
 //! # Quick Start
 //!
 //! ```
+//! # #[cfg(feature = "sync")] {
 //! # use vmcircbuffer::sync;
 //! # use vmcircbuffer::generic::CircularError;
-//! let mut w = sync::Circular::new::<u32>()?;
+//! let mut w = sync::Circular::new::<u32>().unwrap();
 //! let mut r = w.add_reader();
 //!
 //! // delay producing by 1 sec
@@ -40,7 +41,7 @@
 //! }
 //! let l = r_buff.len();
 //! r.consume(l);
-//! # Ok::<(), CircularError>(())
+//! # }
 //! ```
 //!
 //! # Commonalities
@@ -65,11 +66,17 @@
 //!
 //! # Features
 //!
-//! The `async` feature flag allows to enable/disable the async implementation. It is enabled by default.
+//! The `async`, `nonblocking`, and `sync` feature flags, allow to disable the
+//! corresponding implementations. By default, all are enabled. In addition, the
+//! `generic` flag allows to disable the generic implementation, leaving only
+//! the [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer).
 
 #[cfg(feature = "async")]
 pub mod asynchronous;
 pub mod double_mapped_buffer;
+#[cfg(feature = "generic")]
 pub mod generic;
+#[cfg(feature = "nonblocking")]
 pub mod nonblocking;
+#[cfg(feature = "sync")]
 pub mod sync;

@@ -1,7 +1,6 @@
 use rand::distributions::{Distribution, Uniform};
 use std::iter::repeat_with;
 
-use vmcircbuffer::nonblocking;
 use vmcircbuffer::sync::Circular;
 
 #[test]
@@ -93,84 +92,18 @@ fn several_readers() {
 }
 
 #[test]
-fn fuzz_sync() {
+fn minimal() {
     let mut w = Circular::new::<u32>().unwrap();
     let mut r = w.add_reader();
-    let size = w.slice().len();
 
-    let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
-
-    let mut rng = rand::thread_rng();
-    let n_writes_dist = Uniform::from(0..4);
-    let n_samples_dist = Uniform::from(0..size / 2);
-
-    let mut w_off = 0;
-    let mut r_off = 0;
-
-    while r_off < input.len() {
-        let n_writes = n_writes_dist.sample(&mut rng);
-        for _ in 0..n_writes {
-            let s = w.slice();
-            let n = std::cmp::min(s.len(), input.len() - w_off);
-            let n = std::cmp::min(n, n_samples_dist.sample(&mut rng));
-
-            for (i, v) in s.iter_mut().take(n).enumerate() {
-                *v = input[w_off + i];
-            }
-            w.produce(n);
-            w_off += n;
-        }
-
-        let s = r.try_slice().unwrap();
-        assert_eq!(s.len(), w_off - r_off);
-
-        for (i, v) in s.iter().enumerate() {
-            assert_eq!(*v, input[r_off + i]);
-        }
-        let l = s.len();
-        r.consume(l);
-        r_off += l;
+    for v in w.slice() {
+        *v = 123;
     }
-}
+    let l = w.slice().len();
+    w.produce(l);
 
-#[test]
-fn fuzz_nonblocking() {
-    let mut w = nonblocking::Circular::new::<u32>().unwrap();
-    let mut r = w.add_reader();
-    let size = w.try_slice().len();
-
-    let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
-
-    let mut rng = rand::thread_rng();
-    let n_writes_dist = Uniform::from(0..4);
-    let n_samples_dist = Uniform::from(0..size / 2);
-
-    let mut w_off = 0;
-    let mut r_off = 0;
-
-    while r_off < input.len() {
-        let n_writes = n_writes_dist.sample(&mut rng);
-        for _ in 0..n_writes {
-            let s = w.try_slice();
-            let n = std::cmp::min(s.len(), input.len() - w_off);
-            let n = std::cmp::min(n, n_samples_dist.sample(&mut rng));
-
-            for (i, v) in s.iter_mut().take(n).enumerate() {
-                *v = input[w_off + i];
-            }
-            w.produce(n);
-            w_off += n;
-        }
-
-        let s = r.try_slice().unwrap();
-        assert_eq!(s.len(), w_off - r_off);
-
-        for (i, v) in s.iter().enumerate() {
-            assert_eq!(*v, input[r_off + i]);
-        }
-        let l = s.len();
-        r.consume(l);
-        r_off += l;
+    for v in r.slice().unwrap() {
+        assert_eq!(*v, 123);
     }
 }
 
@@ -214,17 +147,42 @@ fn block_reader() {
 }
 
 #[test]
-fn minimal() {
+fn fuzz_sync() {
     let mut w = Circular::new::<u32>().unwrap();
     let mut r = w.add_reader();
+    let size = w.slice().len();
 
-    for v in w.slice() {
-        *v = 123;
-    }
-    let l = w.slice().len();
-    w.produce(l);
+    let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
 
-    for v in r.slice().unwrap() {
-        assert_eq!(*v, 123);
+    let mut rng = rand::thread_rng();
+    let n_writes_dist = Uniform::from(0..4);
+    let n_samples_dist = Uniform::from(0..size / 2);
+
+    let mut w_off = 0;
+    let mut r_off = 0;
+
+    while r_off < input.len() {
+        let n_writes = n_writes_dist.sample(&mut rng);
+        for _ in 0..n_writes {
+            let s = w.slice();
+            let n = std::cmp::min(s.len(), input.len() - w_off);
+            let n = std::cmp::min(n, n_samples_dist.sample(&mut rng));
+
+            for (i, v) in s.iter_mut().take(n).enumerate() {
+                *v = input[w_off + i];
+            }
+            w.produce(n);
+            w_off += n;
+        }
+
+        let s = r.try_slice().unwrap();
+        assert_eq!(s.len(), w_off - r_off);
+
+        for (i, v) in s.iter().enumerate() {
+            assert_eq!(*v, input[r_off + i]);
+        }
+        let l = s.len();
+        r.consume(l);
+        r_off += l;
     }
 }
