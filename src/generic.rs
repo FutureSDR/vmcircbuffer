@@ -167,7 +167,7 @@ where
         debug_assert!(self.space_and_offset(false).0 >= n);
 
         if n > self.last_space {
-            panic!("vmcircbuffer: consumed too much");
+            panic!("vmcircbuffer: produced too much");
         }
         self.last_space -= n;
 
