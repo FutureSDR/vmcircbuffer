@@ -2,6 +2,7 @@
 
 use crate::generic;
 use crate::generic::CircularError;
+use crate::generic::NoMetadata;
 use crate::generic::Notifier;
 
 struct NullNotifier;
@@ -35,7 +36,7 @@ impl Circular {
 
 /// Writer for a non-blocking circular buffer with items of type `T`.
 pub struct Writer<T> {
-    writer: generic::Writer<T, NullNotifier>,
+    writer: generic::Writer<T, NullNotifier, NoMetadata>,
 }
 
 impl<T> Writer<T> {
@@ -66,13 +67,13 @@ impl<T> Writer<T> {
     /// If produced more than space was available in the last provided slice.
     #[inline]
     pub fn produce(&mut self, n: usize) {
-        self.writer.produce(n);
+        self.writer.produce(n, Vec::new());
     }
 }
 
 /// ReaderState for a non-blocking circular buffer with items of type `T`.
 pub struct Reader<T> {
-    reader: generic::Reader<T, NullNotifier>,
+    reader: generic::Reader<T, NullNotifier, NoMetadata>,
 }
 
 impl<T> Reader<T> {
@@ -83,7 +84,7 @@ impl<T> Reader<T> {
     /// empty slice.
     #[inline]
     pub fn try_slice(&mut self) -> Option<&[T]> {
-        self.reader.slice(false)
+        self.reader.slice(false).map(|x| x.0)
     }
 
     /// Indicates that `n` items were read.

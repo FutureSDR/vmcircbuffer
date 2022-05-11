@@ -10,6 +10,7 @@ use std::slice;
 
 use crate::generic;
 use crate::generic::CircularError;
+use crate::generic::NoMetadata;
 use crate::generic::Notifier;
 
 struct AsyncNotifier {
@@ -60,7 +61,7 @@ impl Circular {
 pub struct Writer<T> {
     writer_sender: Sender<()>,
     chan: Receiver<()>,
-    writer: generic::Writer<T, AsyncNotifier>,
+    writer: generic::Writer<T, AsyncNotifier, NoMetadata>,
 }
 
 impl<T> Writer<T> {
@@ -118,14 +119,14 @@ impl<T> Writer<T> {
     ///
     /// If produced more than space was available in the last provided slice.
     pub fn produce(&mut self, n: usize) {
-        self.writer.produce(n);
+        self.writer.produce(n, Vec::new());
     }
 }
 
 /// Reader for an async circular buffer with items of type `T`.
 pub struct Reader<T> {
     chan: Receiver<()>,
-    reader: generic::Reader<T, AsyncNotifier>,
+    reader: generic::Reader<T, AsyncNotifier, NoMetadata>,
 }
 
 impl<T> Reader<T> {
@@ -138,10 +139,10 @@ impl<T> Reader<T> {
         // https://github.com/rust-lang/rust/issues/21906
         let r = loop {
             match self.reader.slice(true) {
-                Some([]) => {
+                Some(([], _)) => {
                     let _ = self.chan.next().await;
                 }
-                Some(s) => break Some((s.as_ptr(), s.len())),
+                Some((s, _)) => break Some((s.as_ptr(), s.len())),
                 None => break None,
             }
         };
@@ -159,7 +160,7 @@ impl<T> Reader<T> {
     /// return `None`. If there is no data to read, `Some` is returned with an
     /// empty slice.
     pub fn try_slice(&mut self) -> Option<&[T]> {
-        self.reader.slice(false)
+        self.reader.slice(false).map(|x| x.0)
     }
 
     /// Indicates that `n` items were read.
