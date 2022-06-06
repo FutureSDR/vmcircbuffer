@@ -53,7 +53,7 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::Create);
             }
 
-            let ret = libc::unlink(path.cast::<i8>());
+            let ret = libc::unlink(path.cast::<libc::c_char>());
             if ret < 0 {
                 libc::close(fd);
                 return Err(DoubleMappedBufferError::Unlink);
