@@ -1,6 +1,6 @@
 [package]
 name = "vmcircbuffer"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Bastian Bloessl <mail@bastibl.net>"]
 edition = "2021"
 license = "Apache-2.0"
