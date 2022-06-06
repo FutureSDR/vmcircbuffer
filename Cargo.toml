@@ -35,18 +35,18 @@ name = "nonblocking"
 required-features = ["nonblocking"]
 
 [dependencies]
-futures = { version = "0.3.17", optional = true }
-once_cell = "1.8.0"
-slab = "0.4.4"
-thiserror = "1.0.29"
+futures = { version = "0.3.21", optional = true }
+once_cell = "1.12"
+slab = "0.4.6"
+thiserror = "1.0"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.99"
+libc = "0.2.126"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["sysinfoapi", "winbase", "handleapi", "memoryapi"] }
 
 [dev-dependencies]
-rand = "0.8.4"
+rand = "0.8.5"
 smol = "1.2.5"
 
