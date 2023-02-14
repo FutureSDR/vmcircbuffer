@@ -8,6 +8,8 @@ use std::time;
 use vmcircbuffer::sync::Circular;
 use vmcircbuffer::sync::Reader;
 
+const MIN_ITEMS: usize = 16384;
+
 struct VectorSource;
 impl VectorSource {
     #[allow(clippy::new_ret_no_self)]
@@ -48,7 +50,7 @@ impl<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Send + Sync
     }
 
     pub fn run(&mut self, barrier: Arc<Barrier>) -> (Reader<A>, JoinHandle<()>) {
-        let mut w = Circular::new::<A>().unwrap();
+        let mut w = Circular::with_capacity::<A>(MIN_ITEMS).unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();
 
@@ -101,7 +103,11 @@ where
     B: Send + Sync + 'static,
 {
     pub fn new(f: F) -> Middle<F, A, B> {
-        Middle { f: Some(f), _p1: PhantomData, _p2: PhantomData }
+        Middle {
+            f: Some(f),
+            _p1: PhantomData,
+            _p2: PhantomData,
+        }
     }
 
     pub fn run(
@@ -109,7 +115,7 @@ where
         mut reader: Reader<A>,
         barrier: Arc<Barrier>,
     ) -> (Reader<B>, JoinHandle<()>) {
-        let mut w = Circular::new::<B>().unwrap();
+        let mut w = Circular::with_capacity::<B>(MIN_ITEMS).unwrap();
         let r = w.add_reader();
         let mut f = self.f.take().unwrap();
 
@@ -159,10 +165,10 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
 }
 
 fn main() {
-    let n_samples = 10_000_000;
+    let n_samples = 20_000_000;
     let input: Vec<f32> = repeat_with(rand::random::<f32>).take(n_samples).collect();
 
-    let n_copy = 100;
+    let n_copy = 200;
     let barrier = Arc::new(Barrier::new(n_copy + 3));
 
     let mut src = VectorSource::new(input.clone());
