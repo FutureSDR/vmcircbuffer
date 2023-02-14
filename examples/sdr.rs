@@ -65,8 +65,6 @@ impl<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Send + Sync
                     break;
                 }
             }
-
-            println!("Source terminated");
         });
 
         (r, handle)
@@ -158,7 +156,6 @@ impl<A: Clone + Send + Sync + 'static> Sink<A> {
                 r.consume(l);
             }
 
-            println!("Sink terminated");
             items
         })
     }

@@ -37,7 +37,7 @@ impl<T> DoubleMappedBuffer<T> {
     ///
     /// Provides raw access to the slice.
     pub unsafe fn slice(&self) -> &[T] {
-        let addr = self.buffer.addr() as usize;
+        let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         slice::from_raw_parts(addr as *const T, self.buffer.capacity())
     }
@@ -49,7 +49,7 @@ impl<T> DoubleMappedBuffer<T> {
     /// Provides raw access to the slice.
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn slice_mut(&self) -> &mut [T] {
-        let addr = self.buffer.addr() as usize;
+        let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         slice::from_raw_parts_mut(addr as *mut T, self.buffer.capacity())
     }
@@ -61,7 +61,7 @@ impl<T> DoubleMappedBuffer<T> {
     /// Provides raw access to the slice. The offset has to be <= the
     /// [capacity](DoubleMappedBuffer::capacity) of the buffer.
     pub unsafe fn slice_with_offset(&self, offset: usize) -> &[T] {
-        let addr = self.buffer.addr() as usize;
+        let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         debug_assert!(offset <= self.buffer.capacity());
         slice::from_raw_parts((addr as *const T).add(offset), self.buffer.capacity())
@@ -75,7 +75,7 @@ impl<T> DoubleMappedBuffer<T> {
     /// [capacity](DoubleMappedBuffer::capacity) of the buffer.
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn slice_with_offset_mut(&self, offset: usize) -> &mut [T] {
-        let addr = self.buffer.addr() as usize;
+        let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         debug_assert!(offset <= self.buffer.capacity());
         slice::from_raw_parts_mut((addr as *mut T).add(offset), self.buffer.capacity())
