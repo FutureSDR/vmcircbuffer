@@ -1,4 +1,5 @@
 use std::iter::repeat_with;
+use std::marker::PhantomData;
 use std::sync::{Arc, Barrier};
 use std::thread;
 use std::thread::JoinHandle;
@@ -10,7 +11,9 @@ use vmcircbuffer::sync::Reader;
 struct VectorSource;
 impl VectorSource {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<A>(input: Vec<A>) -> Source<A>
+    pub fn new<A>(
+        input: Vec<A>,
+    ) -> Source<impl FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A>
     where
         A: Send + Sync + Clone + 'static,
     {
@@ -30,14 +33,17 @@ impl VectorSource {
 }
 
 #[allow(clippy::type_complexity)]
-struct Source<A: Send + Sync + 'static> {
-    f: Option<Box<dyn FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static>>,
+struct Source<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Send + Sync + 'static>
+{
+    f: Option<F>,
+    _p: PhantomData<A>,
 }
 
-impl<A: Send + Sync> Source<A> {
-    pub fn new(f: impl FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static) -> Source<A> {
+impl<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Send + Sync> Source<F, A> {
+    pub fn new(f: F) -> Source<F, A> {
         Source {
-            f: Some(Box::new(f)),
+            f: Some(f),
+            _p: PhantomData,
         }
     }
 
@@ -68,7 +74,7 @@ impl<A: Send + Sync> Source<A> {
 struct CopyBlock;
 impl CopyBlock {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<A>() -> Middle<A, A>
+    pub fn new<A>() -> Middle<impl FnMut(&[A], &mut [A]) + Send + Sync + 'static, A, A>
     where
         A: Send + Sync + Clone + 'static,
     {
@@ -77,23 +83,25 @@ impl CopyBlock {
 }
 
 #[allow(clippy::type_complexity)]
-struct Middle<A, B>
+struct Middle<F, A, B>
 where
+    F: FnMut(&[A], &mut [B]) + Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
 {
-    f: Option<Box<dyn FnMut(&[A], &mut [B]) + Send + Sync + 'static>>,
+    f: Option<F>,
+    _p1: PhantomData<A>,
+    _p2: PhantomData<B>,
 }
 
-impl<A, B> Middle<A, B>
+impl<F, A, B> Middle<F, A, B>
 where
+    F: FnMut(&[A], &mut [B]) + Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
 {
-    pub fn new(f: impl FnMut(&[A], &mut [B]) + Send + Sync + 'static) -> Middle<A, B> {
-        Middle {
-            f: Some(Box::new(f)),
-        }
+    pub fn new(f: F) -> Middle<F, A, B> {
+        Middle { f: Some(f), _p1: PhantomData, _p2: PhantomData }
     }
 
     pub fn run(
