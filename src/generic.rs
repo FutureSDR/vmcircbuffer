@@ -4,14 +4,14 @@ use slab::Slab;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
-use crate::double_mapped_buffer::DoubleMappedBuffer;
+use crate::double_mapped_buffer::{DoubleMappedBuffer, DoubleMappedBufferError};
 
 /// Error setting up the underlying buffer.
 #[derive(Error, Debug)]
 pub enum CircularError {
     /// Failed to allocate double mapped buffer.
     #[error("Failed to allocate double mapped buffer.")]
-    Allocation,
+    Allocation(DoubleMappedBufferError),
 }
 
 /// A custom notifier can be used to trigger arbitrary mechanism to signal to a
@@ -70,7 +70,7 @@ impl Circular {
     {
         let buffer = match DoubleMappedBuffer::new(min_items) {
             Ok(buffer) => Arc::new(buffer),
-            Err(_) => return Err(CircularError::Allocation),
+            Err(e) => return Err(CircularError::Allocation(e)),
         };
 
         let state = Arc::new(Mutex::new(State {
