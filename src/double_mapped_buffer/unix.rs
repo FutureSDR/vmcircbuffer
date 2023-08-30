@@ -89,6 +89,16 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::UnmapSecond);
             }
 
+            #[cfg(target_os = "freebsd")]
+            let buff2 = libc::mmap(
+                buff.add(size),
+                size,
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_SHARED | libc::MAP_FIXED,
+                fd,
+                0,
+            );
+            #[cfg(not(target_os = "freebsd"))]
             let buff2 = libc::mmap(
                 buff.add(size),
                 size,
