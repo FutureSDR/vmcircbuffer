@@ -49,7 +49,7 @@ impl DoubleMappedBufferImpl {
     ) -> Result<Self, DoubleMappedBufferError> {
         let ps = pagesize();
         let mut size = ps;
-        while size < min_items * item_size || size % item_size != 0 {
+        while size < min_items * item_size || !size.is_multiple_of(item_size) {
             size += ps;
         }
 
@@ -86,7 +86,7 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::MapFirst);
             }
 
-            if first_tmp as usize % alignment != 0 {
+            if !(first_tmp as usize).is_multiple_of(alignment) {
                 CloseHandle(handle);
                 return Err(DoubleMappedBufferError::Alignment);
             }
