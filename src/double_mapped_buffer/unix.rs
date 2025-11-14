@@ -34,7 +34,7 @@ impl DoubleMappedBufferImpl {
     ) -> Result<Self, DoubleMappedBufferError> {
         let ps = pagesize();
         let mut size = ps;
-        while size < min_items * item_size || size % item_size != 0 {
+        while size < min_items * item_size || !size.is_multiple_of(item_size) {
             size += ps;
         }
 
@@ -77,7 +77,7 @@ impl DoubleMappedBufferImpl {
                 libc::close(fd);
                 return Err(DoubleMappedBufferError::Placeholder);
             }
-            if buff as usize % alignment != 0 {
+            if !(buff as usize).is_multiple_of(alignment) {
                 libc::close(fd);
                 return Err(DoubleMappedBufferError::Alignment);
             }
