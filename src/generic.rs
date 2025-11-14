@@ -1,7 +1,8 @@
 //! Circular Buffer with generic [Notifier] to implement custom wait/block behavior.
 
 use slab::Slab;
-use std::sync::{Arc, Mutex};
+use spin::Mutex;
+use std::sync::Arc;
 use thiserror::Error;
 
 use crate::double_mapped_buffer::{DoubleMappedBuffer, DoubleMappedBufferError};
@@ -126,7 +127,7 @@ where
 {
     /// Add a [Reader] to the buffer.
     pub fn add_reader(&self, reader_notifier: N, writer_notifier: N) -> Reader<T, N, M> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         let reader_state = ReaderState {
             ab: state.writer_ab,
             offset: state.writer_offset,
@@ -145,7 +146,7 @@ where
     }
 
     fn space_and_offset(&self, arm: bool) -> (usize, usize) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         let capacity = self.buffer.capacity();
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
@@ -204,7 +205,7 @@ where
         assert!(n <= self.last_space, "vmcircbuffer: produced too much");
         self.last_space -= n;
 
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
 
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
@@ -241,7 +242,7 @@ where
     M: Metadata,
 {
     fn drop(&mut self) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         state.writer_done = true;
         for (_, r) in state.readers.iter_mut() {
             r.reader_notifier.notify();
@@ -267,7 +268,7 @@ where
     M: Metadata,
 {
     fn space_and_offset_and_meta(&self, arm: bool) -> (usize, usize, bool, Vec<M::Item>) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
 
         let capacity = self.buffer.capacity();
         let done = state.writer_done;
@@ -323,7 +324,7 @@ where
         assert!(n <= self.last_space, "vmcircbuffer: consumed too much!");
         self.last_space -= n;
 
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         let my = unsafe { state.readers.get_unchecked_mut(self.id) };
 
         my.meta.consume(n);
@@ -343,7 +344,7 @@ where
     M: Metadata,
 {
     fn drop(&mut self) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         let mut s = state.readers.remove(self.id);
         s.writer_notifier.notify();
     }
