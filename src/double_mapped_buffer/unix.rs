@@ -103,7 +103,7 @@ impl DoubleMappedBufferImpl {
                 buff.add(size),
                 size,
                 libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED,
+                libc::MAP_SHARED | libc::MAP_FIXED_NOREPLACE,
                 fd,
                 0,
             );
