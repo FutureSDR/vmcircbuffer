@@ -82,28 +82,11 @@ impl DoubleMappedBufferImpl {
                 return Err(DoubleMappedBufferError::Alignment);
             }
 
-            let ret = libc::munmap(buff.add(size), size);
-            if ret < 0 {
-                libc::munmap(buff, size);
-                libc::close(fd);
-                return Err(DoubleMappedBufferError::UnmapSecond);
-            }
-
-            #[cfg(target_os = "freebsd")]
             let buff2 = libc::mmap(
                 buff.add(size),
                 size,
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_SHARED | libc::MAP_FIXED,
-                fd,
-                0,
-            );
-            #[cfg(not(target_os = "freebsd"))]
-            let buff2 = libc::mmap(
-                buff.add(size),
-                size,
-                libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED | libc::MAP_FIXED_NOREPLACE,
                 fd,
                 0,
             );
