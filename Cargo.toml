@@ -11,6 +11,9 @@ description = "Double Mapped Circular Buffer"
 keywords = ["sdr", "dsp", "real-time", "async"]
 categories = ["asynchronous", "concurrency", "hardware-support", "science"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 async = ["futures", "generic"]

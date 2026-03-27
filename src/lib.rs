@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 //! Double Mapped Circular Buffer
 //!
 //! - Thread-safe.
@@ -74,21 +76,27 @@
 //! In addition, the `generic` flag controls the generic implementation, while
 //! [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer) is always available.
 
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[cfg(feature = "async")]
 pub mod asynchronous;
 pub mod double_mapped_buffer;
+#[cfg_attr(docsrs, doc(cfg(feature = "generic")))]
 #[cfg(feature = "generic")]
 pub mod generic;
+#[cfg_attr(docsrs, doc(cfg(feature = "lockfree")))]
 #[cfg(feature = "lockfree")]
 pub mod lockfree;
+#[cfg_attr(docsrs, doc(cfg(feature = "nonblocking")))]
 #[cfg(feature = "nonblocking")]
 pub mod nonblocking;
+#[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
 #[cfg(feature = "sync")]
 pub mod sync;
 
 /// A custom notifier can be used to trigger arbitrary mechanism to signal to a
 /// reader or writer that data or buffer space is available. This could be a
 /// write to an sync/async channel or a condition variable.
+#[cfg_attr(docsrs, doc(cfg(feature = "generic")))]
 #[cfg(feature = "generic")]
 pub trait Notifier {
     /// Arm the notifier.
@@ -101,6 +109,7 @@ pub trait Notifier {
 }
 
 /// Custom metadata to annotate items.
+#[cfg_attr(docsrs, doc(cfg(any(feature = "generic", feature = "lockfree"))))]
 #[cfg(any(feature = "generic", feature = "lockfree"))]
 pub trait Metadata {
     type Item: Clone;
@@ -116,6 +125,7 @@ pub trait Metadata {
 }
 
 /// Void implementation for the [Metadata] trait for buffers that don't use metadata.
+#[cfg_attr(docsrs, doc(cfg(any(feature = "generic", feature = "lockfree"))))]
 #[cfg(any(feature = "generic", feature = "lockfree"))]
 pub struct NoMetadata;
 
