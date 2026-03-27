@@ -6,7 +6,7 @@
 - Provides access to all items (not n-1).
 - Supports Linux, macOS, Windows, and Android.
 - Sync, async, non-blocking, and lock-free implementations.
-- Generic variant that allows specifying custom `Notifiers` to ease integration.
+- Generic variant that allows specifying custom `Notifier`s to ease integration.
 - Underlying data structure (i.e., `DoubleMappedBuffer`) is exported to allow custom implementations.
 
 [![Crates.io][crates-badge]][crates-url]
@@ -28,6 +28,12 @@ allows the circular buffer to present the available data sequentially, (i.e., as
 a slice) without having to worry about wrapping.
 
 ## Example
+
+Enable at least one implementation feature. For this example:
+
+```toml
+vmcircbuffer = { version = "0.0.13", features = ["sync"] }
+```
 
 ```rust
 use vmcircbuffer::sync;

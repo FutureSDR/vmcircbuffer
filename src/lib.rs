@@ -6,7 +6,7 @@
 //! - Provides access to all items (not n-1).
 //! - Supports Linux, macOS, Windows, and Android.
 //! - [Sync](sync), [async](asynchronous), [non-blocking](nonblocking), and [lock-free](lockfree) implementations.
-//! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::generic::Notifier) to ease integration.
+//! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::Notifier) to ease integration.
 //! - Underlying data structure (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
 //!
 //! # Quick Start
@@ -44,6 +44,9 @@
 //! # }
 //! ```
 //!
+//! Enable at least one implementation feature such as `sync`, `async`, `nonblocking`, or `lockfree`.
+//! The crate does not enable any runtime implementation by default.
+//!
 //! # Commonalities
 //!
 //! There are some commonalities between the implementations:
@@ -66,10 +69,10 @@
 //!
 //! # Features
 //!
-//! The `async`, `nonblocking`, `sync`, and `lockfree` feature flags, allow to disable the
-//! corresponding implementations. By default, all are enabled. In addition, the
-//! `generic` flag allows to disable the generic implementation, leaving only
-//! the [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer).
+//! The `async`, `nonblocking`, `sync`, and `lockfree` feature flags enable the
+//! corresponding implementations. No runtime implementation is enabled by default.
+//! In addition, the `generic` flag controls the generic implementation, while
+//! [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer) is always available.
 
 #[cfg(feature = "async")]
 pub mod asynchronous;
