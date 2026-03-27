@@ -5,7 +5,7 @@
 //! - Generic over the item type.
 //! - Provides access to all items (not n-1).
 //! - Supports Linux, macOS, Windows, and Android.
-//! - [Sync](sync), [async](asynchronous), and [non-blocking](nonblocking) implementations.
+//! - [Sync](sync), [async](asynchronous), [non-blocking](nonblocking), and [lock-free](lockfree) implementations.
 //! - [Generic](crate::generic) variant that allows specifying custom [Notifiers](crate::generic::Notifier) to ease integration.
 //! - Underlying data structure (i.e., [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer)) is exported to allow custom implementations.
 //!
@@ -66,7 +66,7 @@
 //!
 //! # Features
 //!
-//! The `async`, `nonblocking`, and `sync` feature flags, allow to disable the
+//! The `async`, `nonblocking`, `sync`, and `lockfree` feature flags, allow to disable the
 //! corresponding implementations. By default, all are enabled. In addition, the
 //! `generic` flag allows to disable the generic implementation, leaving only
 //! the [DoubleMappedBuffer](double_mapped_buffer::DoubleMappedBuffer).
@@ -76,6 +76,8 @@ pub mod asynchronous;
 pub mod double_mapped_buffer;
 #[cfg(feature = "generic")]
 pub mod generic;
+#[cfg(feature = "lockfree")]
+pub mod lockfree;
 #[cfg(feature = "nonblocking")]
 pub mod nonblocking;
 #[cfg(feature = "sync")]
@@ -96,7 +98,7 @@ pub trait Notifier {
 }
 
 /// Custom metadata to annotate items.
-#[cfg(feature = "generic")]
+#[cfg(any(feature = "generic", feature = "lockfree"))]
 pub trait Metadata {
     type Item: Clone;
 
@@ -111,10 +113,10 @@ pub trait Metadata {
 }
 
 /// Void implementation for the [Metadata] trait for buffers that don't use metadata.
-#[cfg(feature = "generic")]
+#[cfg(any(feature = "generic", feature = "lockfree"))]
 pub struct NoMetadata;
 
-#[cfg(feature = "generic")]
+#[cfg(any(feature = "generic", feature = "lockfree"))]
 impl Metadata for NoMetadata {
     type Item = ();
 

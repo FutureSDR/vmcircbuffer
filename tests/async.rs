@@ -1,4 +1,4 @@
-use rand::distributions::{Distribution, Uniform};
+use rand::distr::{Distribution, Uniform};
 use std::iter::repeat_with;
 
 use vmcircbuffer::asynchronous;
@@ -57,9 +57,9 @@ fn fuzz_async() {
 
         let input: Vec<u32> = repeat_with(rand::random::<u32>).take(1231233).collect();
 
-        let mut rng = rand::thread_rng();
-        let n_writes_dist = Uniform::from(0..4);
-        let n_samples_dist = Uniform::from(0..size / 2);
+        let mut rng = rand::rng();
+        let n_writes_dist = Uniform::new(0, 4).unwrap();
+        let n_samples_dist = Uniform::new(0, size / 2).unwrap();
 
         let mut w_off = 0;
         let mut r_off = 0;

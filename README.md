@@ -5,7 +5,7 @@
 - Generic over the item type.
 - Provides access to all items (not n-1).
 - Supports Linux, macOS, Windows, and Android.
-- Sync, async, and non-blocking implementations.
+- Sync, async, non-blocking, and lock-free implementations.
 - Generic variant that allows specifying custom `Notifiers` to ease integration.
 - Underlying data structure (i.e., `DoubleMappedBuffer`) is exported to allow custom implementations.
 
