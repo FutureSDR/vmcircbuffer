@@ -83,7 +83,11 @@ impl<T> Writer<T> {
         };
 
         let reader = self.writer.add_reader(r_notififer, w_notifier);
-        Reader { reader, chan: rx }
+        Reader {
+            reader,
+            chan: rx,
+            metadata: Vec::new(),
+        }
     }
 
     /// Get a slice to the available output space.
@@ -119,7 +123,7 @@ impl<T> Writer<T> {
     ///
     /// If produced more than space was available in the last provided slice.
     pub fn produce(&mut self, n: usize) {
-        self.writer.produce(n, Vec::new());
+        self.writer.produce(n, &[]);
     }
 }
 
@@ -127,6 +131,7 @@ impl<T> Writer<T> {
 pub struct Reader<T> {
     chan: Receiver<()>,
     reader: generic::Reader<T, AsyncNotifier, NoMetadata>,
+    metadata: Vec<()>,
 }
 
 impl<T> Reader<T> {
@@ -138,11 +143,14 @@ impl<T> Reader<T> {
         // ugly workaround for borrow-checker problem
         // https://github.com/rust-lang/rust/issues/21906
         let r = loop {
-            match self.reader.slice(true) {
-                Some(([], _)) => {
+            match self
+                .reader
+                .slice_with_metadata_into(true, &mut self.metadata)
+            {
+                Some([]) => {
                     let _ = self.chan.next().await;
                 }
-                Some((s, _)) => break Some((s.as_ptr(), s.len())),
+                Some(s) => break Some((s.as_ptr(), s.len())),
                 None => break None,
             }
         };
@@ -160,7 +168,8 @@ impl<T> Reader<T> {
     /// return `None`. If there is no data to read, `Some` is returned with an
     /// empty slice.
     pub fn try_slice(&mut self) -> Option<&[T]> {
-        self.reader.slice(false).map(|x| x.0)
+        self.reader
+            .slice_with_metadata_into(false, &mut self.metadata)
     }
 
     /// Indicates that `n` items were read.

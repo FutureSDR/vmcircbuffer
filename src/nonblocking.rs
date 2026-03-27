@@ -47,7 +47,10 @@ impl<T> Writer<T> {
     /// readers.
     pub fn add_reader(&self) -> Reader<T> {
         let reader = self.writer.add_reader(NullNotifier, NullNotifier);
-        Reader { reader }
+        Reader {
+            reader,
+            metadata: Vec::new(),
+        }
     }
 
     /// Get a slice to the free slots, available for writing.
@@ -67,13 +70,14 @@ impl<T> Writer<T> {
     /// If produced more than space was available in the last provided slice.
     #[inline]
     pub fn produce(&mut self, n: usize) {
-        self.writer.produce(n, Vec::new());
+        self.writer.produce(n, &[]);
     }
 }
 
 /// ReaderState for a non-blocking circular buffer with items of type `T`.
 pub struct Reader<T> {
     reader: generic::Reader<T, NullNotifier, NoMetadata>,
+    metadata: Vec<()>,
 }
 
 impl<T> Reader<T> {
@@ -84,7 +88,8 @@ impl<T> Reader<T> {
     /// empty slice.
     #[inline]
     pub fn try_slice(&mut self) -> Option<&[T]> {
-        self.reader.slice(false).map(|x| x.0)
+        self.reader
+            .slice_with_metadata_into(false, &mut self.metadata)
     }
 
     /// Indicates that `n` items were read.

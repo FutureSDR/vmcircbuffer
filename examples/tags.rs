@@ -25,14 +25,16 @@ impl Metadata for MyMetadata {
     fn new() -> Self {
         MyMetadata { tags: Vec::new() }
     }
-    fn add(&mut self, offset: usize, mut tags: Vec<Self::Item>) {
-        for t in tags.iter_mut() {
+    fn add_from_slice(&mut self, offset: usize, tags: &[Self::Item]) {
+        for t in tags {
+            let mut t = t.clone();
             t.item += offset;
+            self.tags.push(t);
         }
-        self.tags.append(&mut tags);
     }
-    fn get(&self) -> Vec<Self::Item> {
-        self.tags.clone()
+    fn get_into(&self, out: &mut Vec<Self::Item>) {
+        out.clear();
+        out.extend(self.tags.iter().cloned());
     }
     fn consume(&mut self, items: usize) {
         self.tags.retain(|x| x.item >= items);
@@ -53,21 +55,20 @@ fn main() {
     }
     let len = out.len();
 
-    w.produce(
-        len,
-        vec![
-            Tag {
-                item: 0,
-                data: String::from("first"),
-            },
-            Tag {
-                item: 10,
-                data: String::from("tenth"),
-            },
-        ],
-    );
+    let tags = vec![
+        Tag {
+            item: 0,
+            data: String::from("first"),
+        },
+        Tag {
+            item: 10,
+            data: String::from("tenth"),
+        },
+    ];
+    w.produce(len, &tags);
 
-    let (i, tags) = r.slice(false).unwrap();
+    let mut tags = Vec::new();
+    let i = r.slice_with_metadata_into(false, &mut tags).unwrap();
 
     assert_eq!(i[0], 123);
     assert_eq!(tags.len(), 2);
@@ -77,7 +78,7 @@ fn main() {
     assert_eq!(tags[1].item, 10);
 
     r.consume(5);
-    let (i, tags) = r.slice(false).unwrap();
+    let i = r.slice_with_metadata_into(false, &mut tags).unwrap();
 
     assert_eq!(i[0], 123);
     assert_eq!(tags.len(), 1);

@@ -15,47 +15,7 @@ pub enum CircularError {
     Allocation(DoubleMappedBufferError),
 }
 
-/// A custom notifier can be used to trigger arbitrary mechanism to signal to a
-/// reader or writer that data or buffer space is available. This could be a
-/// write to an sync/async channel or a condition variable.
-pub trait Notifier {
-    /// Arm the notifier.
-    fn arm(&mut self);
-    /// The implementation must
-    /// - only notify if armed
-    /// - notify
-    /// - unarm
-    fn notify(&mut self);
-}
-
-/// Custom metadata to annotate items.
-pub trait Metadata {
-    type Item: Clone;
-
-    /// Create metadata container.
-    fn new() -> Self;
-    /// Add metadata, applying `offset` shift to items.
-    fn add(&mut self, offset: usize, tags: Vec<Self::Item>);
-    /// Get metadata.
-    fn get(&self) -> Vec<Self::Item>;
-    /// Prune metadata, i.e., delete consumed [items](Self::Item) and update offsets for the remaining.
-    fn consume(&mut self, items: usize);
-}
-
-/// Void implementation for the [Metadata] trait for buffers that don't use metadata.
-pub struct NoMetadata;
-impl Metadata for NoMetadata {
-    type Item = ();
-
-    fn new() -> Self {
-        Self
-    }
-    fn add(&mut self, _offset: usize, _tags: Vec<Self::Item>) {}
-    fn get(&self) -> Vec<Self::Item> {
-        Vec::new()
-    }
-    fn consume(&mut self, _items: usize) {}
-}
+pub use crate::{Metadata, NoMetadata, Notifier};
 
 /// Gerneric Circular Buffer Constructor
 pub struct Circular;
@@ -195,7 +155,7 @@ where
     /// # Panics
     ///
     /// If produced more than space was available in the last provided slice.
-    pub fn produce(&mut self, n: usize, meta: Vec<M::Item>) {
+    pub fn produce(&mut self, n: usize, meta: &[M::Item]) {
         if n == 0 {
             return;
         }
@@ -225,7 +185,9 @@ where
                 capacity
             };
 
-            r.meta.add(space, meta.clone());
+            if !meta.is_empty() {
+                r.meta.add_from_slice(space, meta);
+            }
             r.reader_notifier.notify();
         }
 
@@ -267,7 +229,7 @@ where
     N: Notifier,
     M: Metadata,
 {
-    fn space_and_offset_and_meta(&self, arm: bool) -> (usize, usize, bool, Vec<M::Item>) {
+    fn space_and_offset(&self, arm: bool) -> (usize, usize, bool) {
         let mut state = self.state.lock();
 
         let capacity = self.buffer.capacity();
@@ -293,20 +255,45 @@ where
             my.reader_notifier.arm();
         }
 
-        (space, r_off, done, my.meta.get())
+        (space, r_off, done)
     }
 
-    /// Get a slice with the items available to read.
-    ///
-    /// Returns `None` if the reader was dropped and all data was read.
-    pub fn slice(&mut self, arm: bool) -> Option<(&[T], Vec<M::Item>)> {
-        let (space, offset, done, tags) = self.space_and_offset_and_meta(arm);
-        self.last_space = space;
-        if space == 0 && done {
-            None
+    /// Get a slice and copy metadata into `out` in one call.
+    pub fn slice_with_metadata_into(&mut self, arm: bool, out: &mut Vec<M::Item>) -> Option<&[T]> {
+        let mut state = self.state.lock();
+
+        let capacity = self.buffer.capacity();
+        let done = state.writer_done;
+        let w_off = state.writer_offset;
+        let w_ab = state.writer_ab;
+
+        let my = unsafe { state.readers.get_unchecked_mut(self.id) };
+        let r_off = my.offset;
+        let r_ab = my.ab;
+
+        let space = if r_off > w_off {
+            w_off + capacity - r_off
+        } else if r_off < w_off {
+            w_off - r_off
+        } else if r_ab == w_ab {
+            0
         } else {
-            unsafe { Some((&self.buffer.slice_with_offset(offset)[0..space], tags)) }
+            capacity
+        };
+
+        if space == 0 && arm {
+            my.reader_notifier.arm();
         }
+
+        my.meta.get_into(out);
+        self.last_space = space;
+
+        if space == 0 && done {
+            out.clear();
+            return None;
+        }
+
+        unsafe { Some(&self.buffer.slice_with_offset(r_off)[0..space]) }
     }
 
     /// Indicates that `n` items were read.
@@ -319,7 +306,7 @@ where
             return;
         }
 
-        debug_assert!(self.space_and_offset_and_meta(false).0 >= n);
+        debug_assert!(self.space_and_offset(false).0 >= n);
 
         assert!(n <= self.last_space, "vmcircbuffer: consumed too much!");
         self.last_space -= n;

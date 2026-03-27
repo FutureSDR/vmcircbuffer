@@ -80,3 +80,50 @@ pub mod generic;
 pub mod nonblocking;
 #[cfg(feature = "sync")]
 pub mod sync;
+
+/// A custom notifier can be used to trigger arbitrary mechanism to signal to a
+/// reader or writer that data or buffer space is available. This could be a
+/// write to an sync/async channel or a condition variable.
+#[cfg(feature = "generic")]
+pub trait Notifier {
+    /// Arm the notifier.
+    fn arm(&mut self);
+    /// The implementation must
+    /// - only notify if armed
+    /// - notify
+    /// - unarm
+    fn notify(&mut self);
+}
+
+/// Custom metadata to annotate items.
+#[cfg(feature = "generic")]
+pub trait Metadata {
+    type Item: Clone;
+
+    /// Create metadata container.
+    fn new() -> Self;
+    /// Add metadata, applying `offset` shift to items.
+    fn add_from_slice(&mut self, offset: usize, tags: &[Self::Item]);
+    /// Copy metadata into the provided output vector.
+    fn get_into(&self, out: &mut Vec<Self::Item>);
+    /// Prune metadata, i.e., delete consumed [items](Self::Item) and update offsets for the remaining.
+    fn consume(&mut self, items: usize);
+}
+
+/// Void implementation for the [Metadata] trait for buffers that don't use metadata.
+#[cfg(feature = "generic")]
+pub struct NoMetadata;
+
+#[cfg(feature = "generic")]
+impl Metadata for NoMetadata {
+    type Item = ();
+
+    fn new() -> Self {
+        Self
+    }
+    fn add_from_slice(&mut self, _offset: usize, _tags: &[Self::Item]) {}
+    fn get_into(&self, out: &mut Vec<Self::Item>) {
+        out.clear();
+    }
+    fn consume(&mut self, _items: usize) {}
+}
