@@ -78,6 +78,9 @@ fn tags() {
     assert_eq!(tags[1].data, String::from("tenth"));
     assert_eq!(tags[1].item, 10);
 
+    let i = r.slice(false).unwrap();
+    assert_eq!(i[0], 123);
+
     r.consume(5);
     let i = r.slice_with_metadata_into(false, &mut tags).unwrap();
 
@@ -85,4 +88,24 @@ fn tags() {
     assert_eq!(tags.len(), 1);
     assert_eq!(tags[0].data, String::from("tenth"));
     assert_eq!(tags[0].item, 5);
+}
+
+#[test]
+fn slice_done_semantics() {
+    let mut w = Circular::with_capacity::<u32, MyNotifier, MyMetadata>(1).unwrap();
+    let mut r = w.add_reader(MyNotifier, MyNotifier);
+
+    assert_eq!(r.slice(false).unwrap().len(), 0);
+
+    let out = w.slice(false);
+    out[0] = 7;
+    w.produce(1, &[]);
+
+    let input = r.slice(false).unwrap();
+    assert_eq!(input, &[7]);
+    r.consume(1);
+
+    drop(w);
+
+    assert!(r.slice(false).is_none());
 }

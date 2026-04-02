@@ -78,11 +78,7 @@ impl<T> Writer<T> {
         };
 
         let reader = self.writer.add_reader(r_notififer, w_notifier);
-        Reader {
-            reader,
-            chan: rx,
-            metadata: Vec::new(),
-        }
+        Reader { reader, chan: rx }
     }
 
     /// Blocking call to get a slice to the available output space.
@@ -128,7 +124,6 @@ impl<T> Writer<T> {
 pub struct Reader<T> {
     chan: Receiver<()>,
     reader: generic::Reader<T, BlockingNotifier, NoMetadata>,
-    metadata: Vec<()>,
 }
 
 impl<T> Reader<T> {
@@ -140,10 +135,7 @@ impl<T> Reader<T> {
         // ugly workaround for borrow-checker problem
         // https://github.com/rust-lang/rust/issues/21906
         let r = loop {
-            match self
-                .reader
-                .slice_with_metadata_into(true, &mut self.metadata)
-            {
+            match self.reader.slice(true) {
                 Some([]) => {
                     let _ = self.chan.recv();
                 }
@@ -165,8 +157,7 @@ impl<T> Reader<T> {
     /// empty slice.
     #[inline]
     pub fn try_slice(&mut self) -> Option<&[T]> {
-        self.reader
-            .slice_with_metadata_into(false, &mut self.metadata)
+        self.reader.slice(false)
     }
 
     /// Indicates that `n` items were read.

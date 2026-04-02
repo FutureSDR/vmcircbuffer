@@ -85,6 +85,19 @@ where
     N: Notifier,
     M: Metadata,
 {
+    #[inline(always)]
+    fn writer_space(capacity: usize, w_off: usize, w_ab: bool, r_off: usize, r_ab: bool) -> usize {
+        if w_off > r_off {
+            r_off + capacity - w_off
+        } else if w_off < r_off {
+            r_off - w_off
+        } else if r_ab == w_ab {
+            capacity
+        } else {
+            0
+        }
+    }
+
     /// Add a [Reader] to the buffer.
     pub fn add_reader(&self, reader_notifier: N, writer_notifier: N) -> Reader<T, N, M> {
         let mut state = self.state.lock();
@@ -105,27 +118,19 @@ where
         }
     }
 
-    fn space_and_offset(&self, arm: bool) -> (usize, usize) {
-        let mut state = self.state.lock();
-        let capacity = self.buffer.capacity();
+    #[inline(always)]
+    fn space_and_offset_locked(
+        state: &mut State<N, M>,
+        capacity: usize,
+        arm: bool,
+    ) -> (usize, usize) {
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
 
         let mut space = capacity;
 
         for (_, reader) in state.readers.iter_mut() {
-            let r_off = reader.offset;
-            let r_ab = reader.ab;
-
-            let s = if w_off > r_off {
-                r_off + capacity - w_off
-            } else if w_off < r_off {
-                r_off - w_off
-            } else if r_ab == w_ab {
-                capacity
-            } else {
-                0
-            };
+            let s = Self::writer_space(capacity, w_off, w_ab, reader.offset, reader.ab);
 
             space = std::cmp::min(space, s);
 
@@ -143,7 +148,9 @@ where
 
     /// Get a slice for the output buffer space. Might be empty.
     pub fn slice(&mut self, arm: bool) -> &mut [T] {
-        let (space, offset) = self.space_and_offset(arm);
+        let mut state = self.state.lock();
+        let (space, offset) =
+            Self::space_and_offset_locked(&mut state, self.buffer.capacity(), arm);
         self.last_space = space;
         unsafe { &mut self.buffer.slice_with_offset_mut(offset)[0..space] }
     }
@@ -160,30 +167,19 @@ where
             return;
         }
 
-        debug_assert!(self.space_and_offset(false).0 >= n);
-
         assert!(n <= self.last_space, "vmcircbuffer: produced too much");
         self.last_space -= n;
 
         let mut state = self.state.lock();
+        let capacity = self.buffer.capacity();
+
+        debug_assert!(Self::space_and_offset_locked(&mut state, capacity, false).0 >= n);
 
         let w_off = state.writer_offset;
         let w_ab = state.writer_ab;
-        let capacity = self.buffer.capacity();
 
         for (_, r) in state.readers.iter_mut() {
-            let r_off = r.offset;
-            let r_ab = r.ab;
-
-            let space = if r_off > w_off {
-                w_off + capacity - r_off
-            } else if r_off < w_off {
-                w_off - r_off
-            } else if r_ab == w_ab {
-                0
-            } else {
-                capacity
-            };
+            let space = Reader::<T, N, M>::reader_space(capacity, w_off, w_ab, r.offset, r.ab);
 
             if !meta.is_empty() {
                 r.meta.add_from_slice(space, meta);
@@ -229,19 +225,9 @@ where
     N: Notifier,
     M: Metadata,
 {
-    fn space_and_offset(&self, arm: bool) -> (usize, usize, bool) {
-        let mut state = self.state.lock();
-
-        let capacity = self.buffer.capacity();
-        let done = state.writer_done;
-        let w_off = state.writer_offset;
-        let w_ab = state.writer_ab;
-
-        let my = unsafe { state.readers.get_unchecked_mut(self.id) };
-        let r_off = my.offset;
-        let r_ab = my.ab;
-
-        let space = if r_off > w_off {
+    #[inline(always)]
+    fn reader_space(capacity: usize, w_off: usize, w_ab: bool, r_off: usize, r_ab: bool) -> usize {
+        if r_off > w_off {
             w_off + capacity - r_off
         } else if r_off < w_off {
             w_off - r_off
@@ -249,41 +235,50 @@ where
             0
         } else {
             capacity
-        };
+        }
+    }
+
+    #[inline(always)]
+    fn space_and_offset_locked(
+        state: &mut State<N, M>,
+        id: usize,
+        capacity: usize,
+        arm: bool,
+    ) -> (usize, usize, bool) {
+        let done = state.writer_done;
+        let w_off = state.writer_offset;
+        let w_ab = state.writer_ab;
+
+        let my = unsafe { state.readers.get_unchecked_mut(id) };
+        let space = Self::reader_space(capacity, w_off, w_ab, my.offset, my.ab);
 
         if space == 0 && arm {
             my.reader_notifier.arm();
         }
 
-        (space, r_off, done)
+        (space, my.offset, done)
+    }
+
+    /// Get a slice without fetching metadata.
+    pub fn slice(&mut self, arm: bool) -> Option<&[T]> {
+        let mut state = self.state.lock();
+        let (space, offset, done) =
+            Self::space_and_offset_locked(&mut state, self.id, self.buffer.capacity(), arm);
+        self.last_space = space;
+
+        if space == 0 && done {
+            return None;
+        }
+
+        unsafe { Some(&self.buffer.slice_with_offset(offset)[0..space]) }
     }
 
     /// Get a slice and copy metadata into `out` in one call.
     pub fn slice_with_metadata_into(&mut self, arm: bool, out: &mut Vec<M::Item>) -> Option<&[T]> {
         let mut state = self.state.lock();
-
-        let capacity = self.buffer.capacity();
-        let done = state.writer_done;
-        let w_off = state.writer_offset;
-        let w_ab = state.writer_ab;
-
+        let (space, offset, done) =
+            Self::space_and_offset_locked(&mut state, self.id, self.buffer.capacity(), arm);
         let my = unsafe { state.readers.get_unchecked_mut(self.id) };
-        let r_off = my.offset;
-        let r_ab = my.ab;
-
-        let space = if r_off > w_off {
-            w_off + capacity - r_off
-        } else if r_off < w_off {
-            w_off - r_off
-        } else if r_ab == w_ab {
-            0
-        } else {
-            capacity
-        };
-
-        if space == 0 && arm {
-            my.reader_notifier.arm();
-        }
 
         my.meta.get_into(out);
         self.last_space = space;
@@ -293,7 +288,7 @@ where
             return None;
         }
 
-        unsafe { Some(&self.buffer.slice_with_offset(r_off)[0..space]) }
+        unsafe { Some(&self.buffer.slice_with_offset(offset)[0..space]) }
     }
 
     /// Indicates that `n` items were read.
@@ -306,12 +301,14 @@ where
             return;
         }
 
-        debug_assert!(self.space_and_offset(false).0 >= n);
-
         assert!(n <= self.last_space, "vmcircbuffer: consumed too much!");
         self.last_space -= n;
 
         let mut state = self.state.lock();
+        debug_assert!(
+            Self::space_and_offset_locked(&mut state, self.id, self.buffer.capacity(), false).0
+                >= n
+        );
         let my = unsafe { state.readers.get_unchecked_mut(self.id) };
 
         my.meta.consume(n);
