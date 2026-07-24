@@ -12,12 +12,12 @@ use winapi::um::winnt::MEM_RESERVE;
 use winapi::um::winnt::PAGE_NOACCESS;
 use winapi::um::winnt::PAGE_READWRITE;
 use winapi::um::{
-    memoryapi::{UnmapViewOfFile, FILE_MAP_WRITE},
+    memoryapi::{FILE_MAP_WRITE, UnmapViewOfFile},
     winbase::CreateFileMappingA,
 };
 
-use super::pagesize;
 use super::DoubleMappedBufferError;
+use super::pagesize;
 
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {

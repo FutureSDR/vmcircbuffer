@@ -1,7 +1,7 @@
 //! Blocking Circular Buffer that blocks until data becomes available.
 
 use core::slice;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::generic;
 use crate::generic::CircularError;

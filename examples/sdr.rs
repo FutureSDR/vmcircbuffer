@@ -41,10 +41,8 @@ struct Source<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Se
     _p: PhantomData<A>,
 }
 
-impl<
-        F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static,
-        A: Copy + Default + Send + Sync,
-    > Source<F, A>
+impl<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Copy + Default + Send + Sync>
+    Source<F, A>
 {
     pub fn new(f: F) -> Source<F, A> {
         Source {

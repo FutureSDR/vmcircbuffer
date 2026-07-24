@@ -4,8 +4,8 @@
 //! [Reader](crate::asynchronous::Reader) have async `slice()` functions to
 //! await until buffer space or data becomes available, respectively.
 
-use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::StreamExt;
+use futures::channel::mpsc::{Receiver, Sender, channel};
 use std::slice;
 
 use crate::generic;

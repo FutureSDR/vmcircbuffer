@@ -5,12 +5,12 @@
 //! - Uses per-reader `spin::Mutex` only for metadata.
 //! - Blocking `slice()` spins until space/data is available.
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use thiserror::Error;
 
-use crate::double_mapped_buffer::{DoubleMappedBuffer, DoubleMappedBufferError};
 use crate::Metadata;
+use crate::double_mapped_buffer::{DoubleMappedBuffer, DoubleMappedBufferError};
 
 /// Error setting up the underlying buffer or adding readers.
 #[derive(Error, Debug)]
@@ -133,7 +133,7 @@ where
         let id = self
             .inner
             .active_readers
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
                 if n < self.inner.readers.len() {
                     Some(n + 1)
                 } else {

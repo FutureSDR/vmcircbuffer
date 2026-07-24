@@ -2,7 +2,8 @@
 name = "vmcircbuffer"
 version = "0.0.14"
 authors = ["Bastian Bloessl <mail@bastibl.net>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.95"
 license = "Apache-2.0"
 homepage = "https://www.futuresdr.org"
 repository = "https://github.com/futuresdr/vmcircbuffer/"

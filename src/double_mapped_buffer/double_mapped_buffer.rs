@@ -56,7 +56,7 @@ impl<T> DoubleMappedBuffer<T> {
     pub unsafe fn slice(&self) -> &[T] {
         let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
-        slice::from_raw_parts(addr as *const T, self.buffer.capacity())
+        unsafe { slice::from_raw_parts(addr as *const T, self.buffer.capacity()) }
     }
 
     /// Returns the mutable slice corresponding to the first mapping of the buffer.
@@ -68,7 +68,7 @@ impl<T> DoubleMappedBuffer<T> {
     pub unsafe fn slice_mut(&self) -> &mut [T] {
         let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
-        slice::from_raw_parts_mut(addr as *mut T, self.buffer.capacity())
+        unsafe { slice::from_raw_parts_mut(addr as *mut T, self.buffer.capacity()) }
     }
 
     /// View of the full buffer, shifted by an offset.
@@ -81,7 +81,7 @@ impl<T> DoubleMappedBuffer<T> {
         let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         debug_assert!(offset <= self.buffer.capacity());
-        slice::from_raw_parts((addr as *const T).add(offset), self.buffer.capacity())
+        unsafe { slice::from_raw_parts((addr as *const T).add(offset), self.buffer.capacity()) }
     }
 
     /// Mutable view of the full buffer, shifted by an offset.
@@ -95,7 +95,7 @@ impl<T> DoubleMappedBuffer<T> {
         let addr = self.buffer.addr();
         debug_assert_eq!(addr % mem::align_of::<T>(), 0);
         debug_assert!(offset <= self.buffer.capacity());
-        slice::from_raw_parts_mut((addr as *mut T).add(offset), self.buffer.capacity())
+        unsafe { slice::from_raw_parts_mut((addr as *mut T).add(offset), self.buffer.capacity()) }
     }
 
     /// The capacity of the buffer, i.e., how many items it can hold.
@@ -109,8 +109,8 @@ mod test {
     use super::*;
     use crate::double_mapped_buffer::pagesize;
     use std::mem;
-    use std::sync::atomic::compiler_fence;
     use std::sync::atomic::Ordering;
+    use std::sync::atomic::compiler_fence;
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     enum Sample {

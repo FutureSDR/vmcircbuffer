@@ -2,8 +2,8 @@ use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
-use super::pagesize;
 use super::DoubleMappedBufferError;
+use super::pagesize;
 
 #[derive(Debug)]
 pub struct DoubleMappedBufferImpl {
