@@ -26,6 +26,7 @@ impl Circular {
     /// The size is the least common multiple of the page size and the size of `T`.
     pub fn with_capacity<T, N, M>(min_items: usize) -> Result<Writer<T, N, M>, CircularError>
     where
+        T: Copy + Default,
         N: Notifier,
         M: Metadata,
     {

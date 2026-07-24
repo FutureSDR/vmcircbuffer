@@ -35,6 +35,7 @@ impl Circular {
         max_readers: usize,
     ) -> Result<Writer<T, M>, CircularError>
     where
+        T: Copy + Default,
         M: Metadata,
     {
         let buffer = match DoubleMappedBuffer::new(min_items) {
@@ -68,6 +69,7 @@ impl Circular {
     #[allow(clippy::new_ret_no_self)]
     pub fn new<T, M>(max_readers: usize) -> Result<Writer<T, M>, CircularError>
     where
+        T: Copy + Default,
         M: Metadata,
     {
         Self::with_capacity(0, max_readers)

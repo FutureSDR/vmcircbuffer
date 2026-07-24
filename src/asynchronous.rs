@@ -38,14 +38,14 @@ impl Circular {
     ///
     /// The actual size is the least common multiple of the page size and the size of `T`.
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>() -> Result<Writer<T>, CircularError> {
+    pub fn new<T: Copy + Default>() -> Result<Writer<T>, CircularError> {
         Self::with_capacity(0)
     }
 
     /// Create a buffer that can hold at least `min_items` items of type `T`.
     ///
     /// The size is the least common multiple of the page size and the size of `T`.
-    pub fn with_capacity<T>(min_items: usize) -> Result<Writer<T>, CircularError> {
+    pub fn with_capacity<T: Copy + Default>(min_items: usize) -> Result<Writer<T>, CircularError> {
         let writer = generic::Circular::with_capacity(min_items)?;
 
         let (tx, rx) = channel(1);

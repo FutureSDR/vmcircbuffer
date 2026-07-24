@@ -17,7 +17,7 @@ impl VectorSource {
         input: Vec<A>,
     ) -> Source<impl FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A>
     where
-        A: Send + Sync + Clone + 'static,
+        A: Copy + Default + Send + Sync + 'static,
     {
         let mut i = 0;
         let n_samples = input.len();
@@ -41,7 +41,11 @@ struct Source<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Se
     _p: PhantomData<A>,
 }
 
-impl<F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static, A: Send + Sync> Source<F, A> {
+impl<
+        F: FnMut(&mut [A]) -> Option<usize> + Send + Sync + 'static,
+        A: Copy + Default + Send + Sync,
+    > Source<F, A>
+{
     pub fn new(f: F) -> Source<F, A> {
         Source {
             f: Some(f),
@@ -76,7 +80,7 @@ impl CopyBlock {
     #[allow(clippy::new_ret_no_self)]
     pub fn new<A>() -> Middle<impl FnMut(&[A], &mut [A]) + Send + Sync + 'static, A, A>
     where
-        A: Send + Sync + Clone + 'static,
+        A: Copy + Default + Send + Sync + 'static,
     {
         Middle::new(|input: &[A], output: &mut [A]| output.clone_from_slice(input))
     }
@@ -86,8 +90,8 @@ impl CopyBlock {
 struct Middle<F, A, B>
 where
     F: FnMut(&[A], &mut [B]) + Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    A: Copy + Default + Send + Sync + 'static,
+    B: Copy + Default + Send + Sync + 'static,
 {
     f: Option<F>,
     _p1: PhantomData<A>,
@@ -97,8 +101,8 @@ where
 impl<F, A, B> Middle<F, A, B>
 where
     F: FnMut(&[A], &mut [B]) + Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    A: Copy + Default + Send + Sync + 'static,
+    B: Copy + Default + Send + Sync + 'static,
 {
     pub fn new(f: F) -> Middle<F, A, B> {
         Middle {

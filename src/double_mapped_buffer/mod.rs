@@ -18,6 +18,9 @@ use thiserror::Error;
 /// Errors that can occur when setting up the double mapping.
 #[derive(Error, Debug)]
 pub enum DoubleMappedBufferError {
+    /// Zero-sized item types are not supported.
+    #[error("Zero-sized item types are not supported.")]
+    ZeroSized,
     /// Failed to close temp file.
     #[error("Failed to close temp file.")]
     Close,

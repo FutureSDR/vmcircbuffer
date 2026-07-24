@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 use std::mem;
+use std::mem::MaybeUninit;
 use std::slice;
 
 use super::DoubleMappedBufferError;
@@ -20,15 +21,31 @@ impl<T> DoubleMappedBuffer<T> {
     ///
     /// The acutal capacity of the buffer will be the smallest multiple of the
     /// system page size and the item size that can hold at least `min_items`
-    /// items.
-    pub fn new(min_items: usize) -> Result<Self, DoubleMappedBufferError> {
-        match DoubleMappedBufferImpl::new(min_items, mem::size_of::<T>(), mem::align_of::<T>()) {
-            Ok(buffer) => Ok(DoubleMappedBuffer {
-                buffer,
-                _p: PhantomData,
-            }),
-            Err(e) => Err(e),
+    /// items. Every physical slot is initialized with `T::default()`; the
+    /// second mapping aliases the same initialized storage.
+    ///
+    /// Zero-sized item types are rejected.
+    pub fn new(min_items: usize) -> Result<Self, DoubleMappedBufferError>
+    where
+        T: Copy + Default,
+    {
+        if mem::size_of::<T>() == 0 {
+            return Err(DoubleMappedBufferError::ZeroSized);
         }
+
+        let buffer =
+            DoubleMappedBufferImpl::new(min_items, mem::size_of::<T>(), mem::align_of::<T>())?;
+        let buffer = DoubleMappedBuffer {
+            buffer,
+            _p: PhantomData,
+        };
+        let ptr = buffer.buffer.addr() as *mut MaybeUninit<T>;
+        for offset in 0..buffer.capacity() {
+            unsafe {
+                ptr.add(offset).write(MaybeUninit::new(T::default()));
+            }
+        }
+        Ok(buffer)
     }
 
     /// Returns the slice corresponding to the first mapping of the buffer.
@@ -94,6 +111,32 @@ mod test {
     use std::mem;
     use std::sync::atomic::compiler_fence;
     use std::sync::atomic::Ordering;
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    enum Sample {
+        Idle,
+        #[default]
+        Active,
+    }
+
+    #[test]
+    fn initialized_buffer_contains_valid_default_values() {
+        let b = DoubleMappedBuffer::<Sample>::new(123).expect("failed to create buffer");
+
+        unsafe {
+            assert!(b.slice().iter().all(|sample| *sample == Sample::Active));
+            b.slice_mut()[0] = Sample::Idle;
+            assert_eq!(b.slice_with_offset(b.capacity())[0], Sample::Idle);
+        }
+    }
+
+    #[test]
+    fn zero_sized_items_are_rejected() {
+        assert!(matches!(
+            DoubleMappedBuffer::<()>::new(1),
+            Err(DoubleMappedBufferError::ZeroSized)
+        ));
+    }
 
     #[test]
     fn byte_buffer() {
