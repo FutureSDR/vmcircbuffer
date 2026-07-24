@@ -1,6 +1,6 @@
 [package]
 name = "vmcircbuffer"
-version = "0.0.14"
+version = "0.0.15"
 authors = ["Bastian Bloessl <mail@bastibl.net>"]
 edition = "2024"
 rust-version = "1.95"
