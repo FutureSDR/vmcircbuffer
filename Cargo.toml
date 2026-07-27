@@ -55,7 +55,7 @@ required-features = ["generic"]
 futures = { version = "0.3", optional = true }
 once_cell = "1.21"
 slab = "0.4"
-spin = "0.10"
+spin = "0.12"
 thiserror = "2.0"
 
 [target.'cfg(unix)'.dependencies]
