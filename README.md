@@ -32,7 +32,7 @@ a slice) without having to worry about wrapping.
 Enable at least one implementation feature. For this example:
 
 ```toml
-vmcircbuffer = { version = "0.0.15", features = ["sync"] }
+vmcircbuffer = { version = "0.0.16", features = ["sync"] }
 ```
 
 ```rust
